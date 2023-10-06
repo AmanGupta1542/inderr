@@ -1,0 +1,56 @@
+
+{% load static %}
+
+<!-- Core JS -->
+    <!-- build:js static/vendor/js/core.js -->
+    <script src="{% static 'vendor/libs/popper/popper.js' %}"></script>
+    <!-- Bootstrap js file -->
+    <script src="{% static 'vendor/js/bootstrap.js' %}"></script>
+    <script src="{% static 'vendor/libs/perfect-scrollbar/perfect-scrollbar.js' %}"></script>
+
+    <script src="{% static 'vendor/js/menu.js' %}"></script>
+    <!-- endbuild -->
+
+    <!-- Vendors JS -->
+    <script src="{% static 'vendor/libs/apex-charts/apexcharts.js' %}"></script>
+
+    <!-- Main JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- Page JS -->
+    <script src="{% static 'js/dashboards-analytics.js' %}"></script>
+
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+    <!-- custom JS -->
+    <script src="{% static 'js/script.js' %}"></script>
+    
+    <script>
+        
+            // Swal.fire('Success', "<?= $this->session->flashdata('success') ?>", 'success');
+        
+            // Swal.fire('Error', "<?= $this->session->flashdata('error') ?>", 'error');
+        
+            // Swal.fire('Warning', "<?= $this->session->flashdata('warning') ?>", 'warning');
+        
+            // Swal.fire('Message', "<?= $this->session->flashdata('info') ?>", 'info');
+        
+
+        // codeigniter pagination anchor tag dynamic class add
+        $(document).ready(function() {
+
+        $('.page-item a').addClass('page-link');
+        
+        });
+
+        // $(document).ready(function () {
+        //     $('#make-data-table').DataTable();
+        // });
+
+        // ClassicEditor
+        //     .create( document.querySelector( '#editor' ) )
+        //     .catch( error => {
+        //         console.error( error );
+        //     } );
+    </script>
