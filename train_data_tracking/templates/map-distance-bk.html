@@ -1,0 +1,206 @@
+
+{% extends "inderr/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+    .highlight { 
+        background-color: #e6e6fa; 
+    }
+</style>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row" style="background-color: white;">
+        <div class="col-lg-4 my-3">
+            <select name="location" id="" class="form-select" aria-label="Locations" onchange="locationChange(event)">
+                <option value="">Select Location</option>
+                {% for place in places %}
+                    <option value="{{ place.name }}">{{ place.name }}</td></option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-8 my-3">
+            <button class="btn btn-outline-primary btn-small mx-2" id="up">Up</button>
+            <button class="btn btn-outline-primary btn-small mx-2" id="down">Down</button>
+        </div>
+        <div class="col-lg-12 mb-4 running-status-cntr">
+
+            <!-- <table class="table table-bordered table-hover table-striped status-list-cntr">
+                <thead class="header-cntr">
+                    <tr>
+                        <th scope="col">SN</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Latitude</th>
+                        <th scope="col">Longitude</th>
+                        <th scope="col">Distance</th>
+                    </tr>
+                </thead>
+                <tbody class="running-status-rows">
+                    {% for place in places %}
+                        <tr>
+                            <td scope="row">{{ forloop.counter }}</td>
+                            <td>{{ place.name }}</td>
+                            <td>{{ place.lat }}</td>
+                            <td>{{ place.lon }}</td>
+                            <td></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table> -->
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+let all_data = null;
+let all_reponses = [];
+
+function locationChange(e){
+    console.log(e);
+    let place_name = e.target.value;
+    let URL = "{% url 'get_lat_lon' %}";
+    fetch(URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers:{
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({'place_name':place_name}) //JavaScript object of data to POST
+    })
+    .then(response => {
+            return response.json() //Convert response to JSON
+    })
+    .then(data => {
+        //Perform actions with the response data from the view
+        // console.log(data)
+        all_data = data
+
+        all_data.other_places.forEach(place => {
+            all_reponses.push(g_map_distance(place.lat, place.lon));
+        });
+        console.log(all_reponses)
+    })
+}
+
+
+// $(document).ready(function(){
+
+//     all_data.other_places.forEach(place => {
+//         all_reponses.push(g_map_distance(place.lat, place.lon));
+//     });
+//     console.log(all_reponses)
+
+// });
+
+function g_map_distance(lat, lon){
+    let res_data = null;
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${all_data.place.lat},${all_data.place.lon}&destinations=${lat},${lon}&key=abc`;
+    // "https://maps.googleapis.com/maps/api/distancematrix/json?origins=40.6655101%2C-73.89188969999998&destinations=40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626&key=YOUR_API_KEY"
+    // const data = {
+    //     key1: 'value1',
+    //     key2: 'value2'
+    // };
+
+    const options = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        redirect: "follow"
+        // body: JSON.stringify(data)
+    };
+
+    fetch(url, options)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json(); // or response.text() if you expect plain text
+        })
+        .then(data => {
+            // Handle the JSON response data here
+            console.log(data);
+            res_data = data;
+        })
+        .catch(error => {
+            // Handle errors here
+            console.error('There was a problem with the fetch operation:', error);
+        });
+
+    return res_data;
+
+}
+
+
+// let selected_row = null;
+// let all_rows = [];
+// (function(){
+//     all_rows = $("tbody").children();
+//     console.log(rows);
+// })();
+
+// all_rows.forEach(rows => {
+    
+// });
+
+
+$(document).ready(function(){
+
+
+    // $('tr').click(function() {
+    //     var selected = $(this).hasClass("highlight");
+    //     $("tr").removeClass("highlight");
+    //     if(!selected){ $(this).addClass("highlight"); }
+    //     selected_row  =  $(this);
+    // });
+
+
+    // $('#up').click(function() {
+    //     // from Bhopal to Delhi
+    //     console.log('selected_row')
+    //     console.log(selected_row)
+    //     if(selected_row){
+    //         let data = selected_row.next().children().eq(1).text().split("-")[0].trim();
+    //         data = data.replace("Jn", "junction");
+    //         console.log(data)
+    //         var msg = new SpeechSynthesisUtterance();
+    //         msg.text = "Next station is "+data;
+    //         window.speechSynthesis.speak(msg);
+    //     } else {
+    //         var msg = new SpeechSynthesisUtterance();
+    //         msg.text = "Please select a row first";
+    //         window.speechSynthesis.speak(msg);
+    //     }
+    // });
+    // $('#down').click(function() {
+    //     // From Delhi to Bhopal
+    //     if(selected_row){
+    //         let data = selected_row.prev().children().eq(1).text().split("-")[0].trim();
+    //         data = data.replace("Jn", "junction");
+    //         console.log(data)
+    //         var msg = new SpeechSynthesisUtterance();
+    //         msg.text = "Previous station is "+data;
+    //         window.speechSynthesis.speak(msg);
+    //     } else {
+    //         var msg = new SpeechSynthesisUtterance();
+    //         msg.text = "Please select a row first";
+    //         window.speechSynthesis.speak(msg);
+    //     }
+    // });
+
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,266 @@
+
+{% extends "inderr/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+</style>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row" style="background-color: white;">
+        <div class="col-lg-12 my-4">
+            <h3 class="my-3">{{ train.number }} | {{ train.name }}</h3>
+            <div>
+                <span class="text-info">Running Days : </span> &nbsp;
+                {% if train.monday == 1 %} <span>Mon</span> {% else %} <span class="text-muted">Mon</span> {% endif %} &nbsp;
+                {% if train.tuesday == 1 %} <span>Tue</span> {% else %} <span class="text-muted">Tue</span> {% endif %} &nbsp;
+                {% if train.wednesday == 1 %} <span>Wed</span> {% else %} <span class="text-muted">Wed</span> {% endif %} &nbsp;
+                {% if train.thursday == 1 %} <span>Thu</span> {% else %} <span class="text-muted">Thu</span> {% endif %} &nbsp;
+                {% if train.friday == 1 %} <span>Fri</span> {% else %} <span class="text-muted">Fri</span> {% endif %} &nbsp;
+                {% if train.saturday == 1 %} <span>Sat</span> {% else %} <span class="text-muted">Sat</span> {% endif %} &nbsp;
+                {% if train.sunday == 1 %} <span>Sun</span> {% else %} <span class="text-muted">Sun</span> {% endif %} &nbsp;
+            </div>
+            <div class="my-2" style="width: 25%;">
+                <select name="location" id="" class="form-select" aria-label="Locations" onchange="locationChange(event)">
+                    <option value="">Select Location</option>
+                    {% for place in places %}
+                        <option value="{{ place.name }}">{{ place.name }}</td></option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-8 my-3 text-danger fs-3" id="next-station">
+            </div>
+        </div>
+        <div class="col-lg-12 mb-4 running-status-cntr">
+            {% for item in object_list %}
+                <!-- <div class="item">
+                    {{ item.station_id.name }} - {{item.station_id.code}}
+                </div> -->
+            {% endfor %}
+
+            <table class="table table-bordered table-hover table-striped status-list-cntr">
+                <thead class="header-cntr">
+                    <tr>
+                        <!-- <th scope="col">SN</th> -->
+                        <th scope="col"></th>
+                        <th scope="col">Station</th>
+                        <th scope="col">Arrives</th>
+                        <th scope="col">Departs</th>
+                    </tr>
+                </thead>
+                <tbody class="running-status-rows">
+                    {% for item in object_list %}
+                        <tr id="{{ item.station_id.name }}" data-station="{{ item.station_id.name }}" class="status-row " >
+                            <!-- <td scope="row">{{ forloop.counter }}</td> -->
+                            <td scope="row" class="timeline" valign="top">
+                                <div class="vertical-line ">
+                                    <div class="stn-pointer"></div>
+                                    <div class="curr-stn-pointer"></div>
+                                </div>
+                            </td>
+                            <td>{{ item.station_id.name }} - {{item.station_id.code}}</td>
+                            <td>{% if item.arrives %} {{ item.arrives }} {% else %} <span class="text-primary">Start</span> {% endif %}</td>
+                            <td>{% if item.departs %} {{ item.departs }} {% else %} <span class="text-danger">End</span> {% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    let prev_stations = null;
+    let next_stations = null;
+
+    function locationChange(e){
+        console.log(e);
+        let place_name = e.target.value;
+        let URL = "{% url 'get_lat_lon2' %}";
+        fetch(URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers:{
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({'details' : {'place_name':place_name, 'train_id': "{{ train.id }}"}}) //JavaScript object of data to POST
+        })
+        .then(response => {
+                return response.json() //Convert response to JSON
+        })
+        .then(data => {
+            //Perform actions with the response data from the view
+            // console.log(data)
+            // Other Places With Difference
+            sorted_stations = data.stop_list.map((station) =>{
+                const lat1 = data.place.lat; // Latitude of the first point
+                const lon1 = data.place.lon; // Longitude of the first point
+                const lat2 = station.lat; // Latitude of the second point
+                const lon2 = station.lon; // Longitude of the second point
+                return {...station, 'distance':haversineDistance(lat1, lon1, lat2, lon2)}
+            })
+            
+            console.log(sorted_stations);
+            sorted_stations.sort((a, b) => a.distance - b.distance);
+
+            min_stat = sorted_stations[0];
+
+            /*
+            
+                1.) Calculate distance from base station to the train current location (FSTCL)
+                2.) Calculate distance from base station to the station which is on minimum distance from current train station (FSTMS)
+                3.) If (FSTMS < FSTCL) means calulated minimum distance from current train station is greater than Minimum station(min_stat)
+                    then next order station is the next station
+                    If (FSTMS == 0) if train on the station then (from station to minimum station difference will be 0)
+                    then next order station is the next station
+                4.) else from current location the minimum train station distance is more 
+                    than (current calculated station is minimum station)
+            */
+
+            // From station to current location (selected place)
+            FSTCL = haversineDistance(data.from_station.lat, data.from_station.lon, data.place.lat, data.place.lon)
+
+            // From station to miminum station (min_stat)
+            FSTMS = haversineDistance(data.from_station.lat, data.from_station.lon, min_stat.lat, min_stat.lon)
+
+            if(FSTMS < FSTCL || FSTMS == 0){
+                // filter from sorted_stations to next order from min_stat order
+                console.log('comming')
+                console.log(+min_stat.order+1)
+                console.log('comming')
+                next_stations = sorted_stations.filter(stat=> min_stat.order+1 == stat.order)[0];
+            } else {
+                next_stations = min_stat;
+            }
+            console.log(min_stat)
+            console.log('FSTCL '+FSTCL)
+            console.log('FSTMS '+FSTMS)
+            console.log(FSTMS == 0)
+
+            // station1 = sorted_stations[0];
+            // station2 = sorted_stations[1];
+            // if(station1.order > station2.order){
+            //     next_stations = station1;
+            //     prev_stations = station2;
+            // } else {
+            //     next_stations = station2;
+            //     prev_stations = station1;
+            // }
+            $('#next-station').text(next_stations.name);
+            
+            function runOnce() {
+                // Your code to run once
+                announcement(next_stations)
+                
+                // Cancel the interval after the first execution
+                clearInterval(intervalID);
+            }
+            
+            const intervalID = setInterval(runOnce, 1000);
+        })
+
+    }
+        
+
+    function announcement(station){
+        var msg = new SpeechSynthesisUtterance();
+        msg.text = "Next station is "+station.name;
+        window.speechSynthesis.speak(msg);
+        
+    }
+
+
+    // distance between two geolocation points (latitude and longitude) using the Haversine formula
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius of the Earth in kilometers
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return distance;
+        }
+
+    // Example usage:
+    // const lat1 = 23.260461; // Latitude of the first point
+    // const lon1 = 77.409404; // Longitude of the first point
+    // const lat2 = 23.415132; // Latitude of the second point
+    // const lon2 = 77.590870; // Longitude of the second point
+
+    // const result = haversineDistance(lat1, lon1, lat2, lon2);
+    // console.log(`Distance between the two points is ${result} km`);
+    function sortByDistance(objects) {
+        // Use the Array.sort() method with a comparison function
+        objects.sort((a, b) => a.distance - b.distance);
+    }
+
+    function sortByDistanceDescending(objects) {
+        objects.sort((a, b) => b.distance - a.distance);
+    }
+
+    function findMinDistance(objects) {
+        if (objects.length === 0) {
+            return null; // Return null if the array is empty
+        }
+
+        let minDistanceObject = objects[0];
+
+        for (let i = 1; i < objects.length; i++) {
+            if (objects[i].distance < minDistanceObject.distance) {
+            minDistanceObject = objects[i];
+            }
+        }
+
+        return minDistanceObject;
+    }
+
+    function findMaxDistance(objects) {
+        if (objects.length === 0) {
+            return null; // Return null if the array is empty
+        }
+
+        let maxDistanceObject = objects[0];
+
+        for (let i = 1; i < objects.length; i++) {
+            if (objects[i].distance > maxDistanceObject.distance) {
+            maxDistanceObject = objects[i];
+            }
+        }
+
+        return maxDistanceObject;
+    }
+
+
+    $(document).ready(function(){
+        var rowIdx = 0;
+
+        // $('tr').click(function() {
+        //     // console.log($(event))
+        //     let data = $(this).next().children().eq(1).text().split("-")[0].trim();
+        //     data = data.replace("Jn", "junction");
+        //     // console.log(data)
+        //     var msg = new SpeechSynthesisUtterance();
+        //     msg.text = "Next station is "+data;
+        //     window.speechSynthesis.speak(msg);
+        // });
+
+    });
+
+
+
+</script>
+
+{% endblock %}

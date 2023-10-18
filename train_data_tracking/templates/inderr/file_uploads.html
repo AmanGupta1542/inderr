@@ -1,0 +1,68 @@
+{% extends "inderr/base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row" style="background-color: white;">
+        <div class="col-lg-12 my-4 order-0">
+            <h3 class="my-3">Uploads</h3>
+            <div>
+                <small class="text-danger">Images and videos file extension, which you can upload</small><br>
+                <small class="text-danger"># Image Formats: JPG, JPEG, PNG, SVG</small><br>
+                <small class="text-danger"># Video Formats: MP4, MOV, WMV, WebM, AVI, FLV, MKV, MTS</small><br>
+            </div>
+
+            <div class="mt-2">
+                <form method="post" enctype="multipart/form-data">  
+                    {% csrf_token %}  
+                    {{ form.as_p }}  
+                    <button type="submit">Upload</button>  
+                </form>  
+              
+                {% if img_obj %}  
+                    <h3>Succesfully uploaded : {{img_obj.caption}}</h3>  
+                    <img src="{{ img_obj.image.url}}" alt="connect" style="max-height:300px">  
+                {% endif %}  
+            </div>
+            
+        </div>
+        <div class="col-lg-12 mb-4 order-0">
+            
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+<!-- Include jQuery library -->
+<!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
+
+<!-- <script>
+$(document).ready(function() {
+    function loadPage(pageNumber) {
+        $.ajax({
+            url: '/path/to/your/view/',
+            data: {
+                'page': pageNumber,
+                // Include any other query parameters you want to pass
+            },
+            success: function(data) {
+                // Replace the content with the new data (assuming it's wrapped in a div with the class "content")
+                $('.content').html(data);
+            }
+        });
+    }
+
+    // Attach click event handlers to the pagination links
+    $(document).on('click', '.pagination a', function(e) {
+        e.preventDefault();
+        const pageNumber = $(this).data('page-number');
+        loadPage(pageNumber);
+    });
+});
+</script> -->
+
+{% endblock %}
