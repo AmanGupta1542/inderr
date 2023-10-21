@@ -12,5 +12,6 @@ urlpatterns = [
     path('uploads/', file_uploads, name="file_uploads"),
     path('get_lat_lon/', get_lat_lon, name="get_lat_lon"),
     path('get_lat_lon2/', get_lat_lon2, name="get_lat_lon2"),
+    path('send_data_rsp/', send_data_rsp, name="send_data_rsp"),
     path("train_details/<int:train_number>/", train_details, name="train_details"),
 ]

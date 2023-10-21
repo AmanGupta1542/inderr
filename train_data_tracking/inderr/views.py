@@ -166,3 +166,35 @@ def get_lat_lon2(request): # May include more arguments depending on URL paramet
         return JsonResponse(data,safe=False)
 
     return JsonResponse({'error': 'Method not allowed'}, status=403)
+
+def send_data_rsp(request):
+    if request.method == 'POST':
+        import socket
+        data = json.load(request)['data']
+        print(data)
+        # Define the Raspberry Pi's IP address and port
+        # raspberry_pi_ip = '192.168.43.15'  # aman wifi
+        #raspberry_pi_ip = '192.168.137.8'
+        raspberry_pi_ip = '192.168.1.15'
+        raspberry_pi_port = 1026
+        try:
+            # Create a socket object
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            # Connect to the Raspberry Pi
+            client_socket.connect((raspberry_pi_ip, raspberry_pi_port))
+
+            # Send data to the Raspberry Pi
+            # data = "Hello, Raspberry Pi!"
+            data = data['next_stations']
+            client_socket.send(data.encode('utf-8'))
+            # Close the socket
+            client_socket.close()
+            return JsonResponse({'success': 'Called Successfully'}, status=200)
+        except socket.gaierror as e:
+            return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
+            # return f"Socket error: {e}"
+        except Exception as e:
+            return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
+            # return f"An error occurred: {e}"
+    return JsonResponse({'error': 'Method not allowed'}, status=403)
