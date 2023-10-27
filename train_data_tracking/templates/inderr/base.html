@@ -3,6 +3,9 @@
 {% load pwa %} 
 {% progressive_web_app_meta %}
 <link rel="manifest" href="manifest.json">
+{% if no_base_load %}
+    {% block content_WB %}{% endblock %}
+{% else %}
 <head>
     
     {% include 'inderr/includes/head.html' %}
@@ -42,4 +45,5 @@
 
         {% block script %}{% endblock %}
 </body>
+{% endif %}
 </html>

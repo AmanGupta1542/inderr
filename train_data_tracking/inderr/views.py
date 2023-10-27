@@ -46,7 +46,7 @@ def user_login(request):
             else:
                 messages.error(request,"Invalid username or password.")
         form = UserLogin()
-        return render(request=request, template_name="inderr/login.html", context={"login_form":form})
+        return render(request=request, template_name="inderr/login.html", context={"login_form":form, "no_base_load":True})
 
 
 def user_logout(request):

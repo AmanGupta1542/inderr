@@ -1,13 +1,7 @@
+
+{% extends "inderr/base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html
-  lang="en"
-  class="light-style customizer-hide"
-  dir="ltr"
-  data-theme="theme-default"
-  data-assets-path="{% static '' %}"
-  data-template="vertical-menu-template-free"
->
+{% block content_WB %}
   <head>
     <meta charset="utf-8" />
     <meta
@@ -214,4 +208,5 @@
     <!-- Place this tag in your head or just before your close body tag. -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
   </body>
-</html>
+
+{% endblock %}
