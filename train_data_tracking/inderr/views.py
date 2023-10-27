@@ -175,7 +175,7 @@ def send_data_rsp(request):
         # Define the Raspberry Pi's IP address and port
         # raspberry_pi_ip = '192.168.43.15'  # aman wifi
         #raspberry_pi_ip = '192.168.137.8'
-        raspberry_pi_ip = '192.168.1.15'
+        raspberry_pi_ip = '192.168.1.15'  # madhya airtel
         raspberry_pi_port = 1026
         try:
             # Create a socket object

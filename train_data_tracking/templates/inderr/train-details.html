@@ -160,7 +160,7 @@
             function runOnce() {
                 // Your code to run once
                 // announcement(next_stations)
-                forward_announcment({'next_stations': "Next station is "+next_stations.name});
+                forward_announcment({'next_stations': "The next Station is "+next_stations.name});
                 // Cancel the interval after the first execution
                 clearInterval(intervalID);
             }
@@ -173,7 +173,7 @@
 
     function announcement(station){
         var msg = new SpeechSynthesisUtterance();
-        msg.text = "Next station is "+station.name;
+        msg.text = "The next Station is "+station.name;
         window.speechSynthesis.speak(msg);
         
     }

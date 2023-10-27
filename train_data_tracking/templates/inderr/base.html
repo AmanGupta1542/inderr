@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+{% load pwa %} 
+{% progressive_web_app_meta %}
+<link rel="manifest" href="manifest.json">
 <head>
     
     {% include 'inderr/includes/head.html' %}

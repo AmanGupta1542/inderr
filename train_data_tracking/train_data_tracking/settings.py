@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'pwa',
     'inderr'
 ]
 
@@ -142,3 +143,34 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES_DIRS = [STATIC_DIR]
+PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'static/js/service-worker.js')
+
+PWA_APP_NAME = 'Inderr'
+PWA_APP_DESCRIPTION = "Inderr PWA"
+PWA_APP_THEME_COLOR = '#000000'
+PWA_APP_BACKGROUND_COLOR = '#ffffff'
+PWA_APP_DISPLAY = 'standalone'
+PWA_APP_SCOPE = '/'
+PWA_APP_ORIENTATION = 'any'
+PWA_APP_START_URL = '/'
+PWA_APP_STATUS_BAR_COLOR = 'default'
+PWA_APP_ICONS = [
+	{
+		'src': 'static/images/icons/icon-144x144.png',
+		'sizes': '144x144'
+	}
+]
+# PWA_APP_ICONS_APPLE = [
+# 	{
+# 		'src': 'static/img//icons/brands/twitter.png',
+# 		'sizes': '160x160'
+# 	}
+# ]
+# PWA_APP_SPLASH_SCREEN = [
+# 	{
+# 		'src': 'static/img//icons/brands/twitter.png',
+# 		'media': '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)'
+# 	}
+# ]
+PWA_APP_DIR = 'ltr'
+PWA_APP_LANG = 'en-US'
