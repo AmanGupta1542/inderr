@@ -9,6 +9,8 @@ from django.db.models import Q
 
 from .forms import UserLogin, UserImage
 from .models import Trains, TrainInnerStation, UploadImage, Temp
+from .coords import get_coords
+from .public_functions import *
 
 # Create your views here.
 
@@ -73,7 +75,40 @@ def train_details(request, train_number):
         train = Trains.objects.get(number=train_number)
         object_list = TrainInnerStation.objects.filter(train_id=train).order_by('order')
         places = Temp.objects.all()
-        context = {'train': train, 'object_list':object_list, 'places':places}
+
+        print(train.id)
+        next_stations = get_next_station(train.id)
+        # stop_stations = TrainInnerStation.objects.filter(train_id=train.id).order_by('order')
+        # curr_location = get_coords()
+        # if curr_location['lat'] != 0 and curr_location['lon'] != 0 :
+        #     stop_list = []
+        #     for stations in stop_stations:
+        #         # print(stations.station_id.name)
+        #         dict = {
+        #                 'name': stations.station_id.name,
+        #                 'lat': stations.station_id.lat,
+        #                 'lon':stations.station_id.lon,
+        #                 'order': stations.order,
+        #                 'distance': haversine_distance(curr_location['lat'], curr_location['lon'], stations.station_id.lat, stations.station_id.lon)
+        #             }
+        #         stop_list.append(dict)
+        #     from_station = stop_list[0]
+        #     sorted_stations = stop_list
+        #     sorted_stations.sort(key=lambda x: x['distance'])
+        #     min_stat = sorted_stations[0]
+
+        #     # From station to current location (selected place)
+        #     FSTCL = haversine_distance(from_station['lat'], from_station['lon'], curr_location['lat'], curr_location['lon'])
+
+        #     # From station to miminum station (min_stat)
+        #     FSTMS = haversine_distance(from_station['lat'], from_station['lon'], min_stat['lat'], min_stat['lon'])
+        #     if(FSTMS < FSTCL or FSTMS == 0):
+        #         next_stations = [stat for stat in sorted_stations if min_stat['order']+1 == stat['order']][0]
+        #     else :
+        #         next_stations = min_stat
+
+
+        context = {'train': train, 'object_list':object_list, 'places':places, 'curr_location':get_coords(), 'next_stations':next_stations}
         # print(object_list)
         return render(request, 'inderr/train-details.html', context)
     else :
@@ -173,9 +208,9 @@ def send_data_rsp(request):
         data = json.load(request)['data']
         print(data)
         # Define the Raspberry Pi's IP address and port
-        # raspberry_pi_ip = '192.168.43.15'  # aman wifi
+        raspberry_pi_ip = '192.168.43.15'  # aman wifi
         #raspberry_pi_ip = '192.168.137.8'
-        raspberry_pi_ip = '192.168.1.15'  # madhya airtel
+        # raspberry_pi_ip = '192.168.1.15'  # madhya airtel
         raspberry_pi_port = 1026
         try:
             # Create a socket object
@@ -197,4 +232,12 @@ def send_data_rsp(request):
         except Exception as e:
             return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
             # return f"An error occurred: {e}"
+    return JsonResponse({'error': 'Method not allowed'}, status=403)
+
+def get_updated_info(request):
+    if request.method == 'POST':
+        details = json.load(request)['details']
+        train_id = details['train_id']
+        data = get_next_station(train_id)
+        return JsonResponse({'success': 'Called Successfully', 'data': data}, status=200)
     return JsonResponse({'error': 'Method not allowed'}, status=403)

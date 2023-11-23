@@ -10,7 +10,9 @@
 <div class="container-xxl flex-grow-1 container-p-y">
     <div class="row" style="background-color: white;">
         <div class="col-lg-12 my-4">
-            <h3 class="my-3">{{ train.number }} | {{ train.name }}</h3>
+            <h3 class="my-3">{{ train.number }} | {{ train.name }} 
+                <!-- | {{curr_location.lat}} | {{curr_location.lon}} -->
+            </h3>
             <div>
                 <span class="text-info">Running Days : </span> &nbsp;
                 {% if train.monday == 1 %} <span>Mon</span> {% else %} <span class="text-muted">Mon</span> {% endif %} &nbsp;
@@ -30,6 +32,9 @@
                 </select>
             </div>
             <div class="col-lg-8 my-3 text-danger fs-3" id="next-station">
+                {% if next_stations %}
+                    {{ next_stations.name }}
+                {% endif %}
             </div>
         </div>
         <div class="col-lg-12 mb-4 running-status-cntr">
@@ -246,7 +251,8 @@
 
     $(document).ready(function(){
         var rowIdx = 0;
-
+        // get_updated_info();
+        // setInterval(get_updated_info, 5000)
         // $('tr').click(function() {
         //     // console.log($(event))
         //     let data = $(this).next().children().eq(1).text().split("-")[0].trim();
@@ -258,6 +264,30 @@
         // });
 
     });
+
+    function get_updated_info(){
+        let URL = "{% url 'get_updated_info' %}";
+        fetch(URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers:{
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({'details' : {'train_id': "{{ train.id }}"}}) //JavaScript object of data to POST
+        })
+        .then(response => {
+                return response.json() //Convert response to JSON
+        })
+        .then(data => {
+            //Perform actions with the response data from the view
+            // console.log(data.name)
+            // console.log(data.data.name)
+            forward_announcment({'next_stations': "The next Station is "+data.data.name});
+            
+        })
+    }
 
 
     function forward_announcment(data){

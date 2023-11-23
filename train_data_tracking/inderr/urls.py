@@ -13,5 +13,6 @@ urlpatterns = [
     path('get_lat_lon/', get_lat_lon, name="get_lat_lon"),
     path('get_lat_lon2/', get_lat_lon2, name="get_lat_lon2"),
     path('send_data_rsp/', send_data_rsp, name="send_data_rsp"),
+    path('get_updated_info/', get_updated_info, name="get_updated_info"),
     path("train_details/<int:train_number>/", train_details, name="train_details"),
 ]
