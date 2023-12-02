@@ -9,7 +9,7 @@ from django.db.models import Q
 
 from .forms import UserLogin, UserImage
 from .models import Trains, TrainInnerStation, UploadImage, Temp
-from .coords import get_coords
+from .coords import get_coords, next_coords
 from .public_functions import *
 
 # Create your views here.
@@ -208,9 +208,9 @@ def send_data_rsp(request):
         data = json.load(request)['data']
         print(data)
         # Define the Raspberry Pi's IP address and port
-        raspberry_pi_ip = '192.168.43.15'  # aman wifi
+        # raspberry_pi_ip = '192.168.43.15'  # aman wifi
         #raspberry_pi_ip = '192.168.137.8'
-        # raspberry_pi_ip = '192.168.1.15'  # madhya airtel
+        raspberry_pi_ip = '192.168.1.4'  # madhya airtel
         raspberry_pi_port = 1026
         try:
             # Create a socket object
@@ -222,6 +222,7 @@ def send_data_rsp(request):
             # Send data to the Raspberry Pi
             # data = "Hello, Raspberry Pi!"
             data = data['next_stations']
+            print(data)
             client_socket.send(data.encode('utf-8'))
             # Close the socket
             client_socket.close()

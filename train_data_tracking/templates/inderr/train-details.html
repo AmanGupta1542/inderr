@@ -252,7 +252,7 @@
     $(document).ready(function(){
         var rowIdx = 0;
         // get_updated_info();
-        // setInterval(get_updated_info, 5000)
+        setInterval(get_updated_info, 5000)
         // $('tr').click(function() {
         //     // console.log($(event))
         //     let data = $(this).next().children().eq(1).text().split("-")[0].trim();
@@ -282,8 +282,9 @@
         })
         .then(data => {
             //Perform actions with the response data from the view
-            // console.log(data.name)
-            // console.log(data.data.name)
+            console.log(data.name)
+            console.log(data.data.name)
+            $('#next-station').text(data.data.name);
             forward_announcment({'next_stations': "The next Station is "+data.data.name});
             
         })
