@@ -165,7 +165,7 @@
             function runOnce() {
                 // Your code to run once
                 // announcement(next_stations)
-                forward_announcment({'next_stations': "The next Station is "+next_stations.name});
+                forward_announcment({'next_station': "The next Station is "+next_stations.name});
                 // Cancel the interval after the first execution
                 clearInterval(intervalID);
             }
@@ -285,7 +285,8 @@
             console.log(data.name)
             console.log(data.data.name)
             $('#next-station').text(data.data.name);
-            forward_announcment({'next_stations': "The next Station is "+data.data.name});
+            // forward_announcment({'next_station': "The next Station is "+data.data.name});
+            forward_announcment({'next_station': data.data});
             
         })
     }
