@@ -76,9 +76,9 @@ def trains(request):
 def emit_rpi_data(request, data):
     import socket
     # Define the Raspberry Pi's IP address and port
-    # raspberry_pi_ip = '192.168.43.15'  # aman wifi
+    raspberry_pi_ip = '192.168.43.15'  # aman wifi
     #raspberry_pi_ip = '192.168.137.8'
-    raspberry_pi_ip = '192.168.31.89'  # madhya airtel
+    # raspberry_pi_ip = '192.168.31.89'  # madhya airtel
     raspberry_pi_port = 1026
     try:
         print('try connecting')
@@ -166,11 +166,14 @@ def train_details(request, train_number):
         context = {'train': train, 'object_list':object_list, 'places':places, 'curr_location':get_coords(), 'next_stations':next_stations }
         print("emit_rpi_data call")
         stations = []
+        total_distance = 0
         for station in object_list:
+            if station.distance: total_distance +=station.distance
             stations.append({
                 'name': station.station_id.name,
                 'abbr': station.station_id.code,
                 'distance': station.distance,
+                'total_distance': total_distance,
                 'order': station.order,
                 'estimate_time': station.arrives.strftime('%H:%M') if station.arrives is not None else None,
                 'delay_time': station.departs.strftime('%H:%M') if station.departs is not None else None,
@@ -423,7 +426,7 @@ def send_data_rsp(request):
         # 'late_by': late_by
         data['curr_location'] = get_coords()
         data['speed'] = 0
-        data['late_by'] = 30
+        data['late_by'] = 0
         print(data)
         emit_rpi_data(request, data)
         # # Define the Raspberry Pi's IP address and port
