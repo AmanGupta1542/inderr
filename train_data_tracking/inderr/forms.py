@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import ModelForm
 
-from .models import UploadImage
+from .models import UploadImage, ConfigInfo
 
 class UserLogin(forms.Form):
     username = forms.CharField(label="Username", max_length=100)
@@ -18,3 +18,14 @@ class UserImage(forms.ModelForm):
         model = UploadImage  
         # It includes all the fields of model  
         fields = '__all__'  
+
+
+class ConfigInfoForm(forms.ModelForm):
+    class Meta:
+        model = ConfigInfo
+        fields = ['train', 'coach_no']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['train'].widget.attrs.update({'class': 'form-control select2', 'style': 'width: 100%'})
+        self.fields['coach_no'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Enter coach number'})

@@ -7,22 +7,122 @@ from django.http import JsonResponse
 import json
 import pickle
 import sys
+import threading
+import pickle
 from django.db.models import Q
-from datetime import datetime, time
+from datetime import datetime
+import time
 
-from .forms import UserLogin, UserImage
-from .models import Trains, TrainInnerStation, UploadImage, Temp
+
+from .forms import UserLogin, UserImage, ConfigInfoForm
+from .models import Trains, TrainInnerStation, UploadImage, Temp, ConfigInfo, Stations
 from .coords import get_coords, next_coords
 from .public_functions import *
+from .board import LEDBoard
+import serial
 
-# Create your views here.
+BOARD_PICKLE_FILE = "board.pkl"
+board_defualt_run_thread = None
+board_defualt_run_thread_b = True
+board_train_data_thread = None
+board_train_data_thread_b = True
+stop_event = threading.Event()
+board_unpickle = None
 
 def index(request):
+    global board_defualt_run_thread
+    global board_train_data_thread
+    global board_defualt_run_thread_b
+    global board_train_data_thread_b
     if request.user.is_authenticated:
-        return render(request, 'inderr/dashboard.html')
+        config_train_coach = ConfigInfo.objects.first()
+        if config_train_coach:
+            object_list = TrainInnerStation.objects.filter(train_id=config_train_coach.train).order_by('order')
+            ctx = {'config': config_train_coach, 'object_list': object_list}
+            for thread in threading.enumerate():
+                print(thread)
+            if board_defualt_run_thread is not None and board_defualt_run_thread.is_alive():
+                # Set the event to signal the thread to stop
+                # stop_event.set()
+                # # Wait for the thread to stop
+                # board_defualt_run_thread.join()
+                # # Reset the event for future use
+                # stop_event.clear()
+                board_defualt_run_thread_b = False
+            print(board_defualt_run_thread.is_alive())
+            print(board_defualt_run_thread)
+            for thread in threading.enumerate():
+                print(thread)
+            print(config_train_coach.train)
+            from_station = Stations.objects.get(pk = config_train_coach.train.from_station_id).name.upper()
+            to_station = Stations.objects.get(pk = config_train_coach.train.to_station_id).name.upper()
+            board_train_data = {
+                'fix_part' : {
+                    'coach_no': config_train_coach.coach_no.upper(),  # 'A-11'
+                    'train_no': config_train_coach.train.number   # '12003'
+                },
+                'moving_part': {
+                    'train_from_to': from_station+" TO "+to_station,
+                    'train_name': config_train_coach.train.name.upper(),
+                    'train_via': 'VIA SAGAR, BINA'
+                }
+            }
+            if board_train_data_thread is None or not board_train_data_thread.is_alive():
+                board_train_data_thread = threading.Thread(target=board_run_train_data, args=(board_train_data,), name="BoardTrainDataThread")
+                board_train_data_thread_b = True
+                board_train_data_thread.start()
+            return render(request, 'inderr/dashboard.html', context=ctx)
+        else: 
+            return redirect('/config_train_and_coach')
     else:
+        # request.session['board'] = LEDBoard()
+        with open(BOARD_PICKLE_FILE, 'wb') as f:
+            pickle.dump(LEDBoard(), f)
+
+        # check if this thread already running then stop this thread first
+        if board_train_data_thread is not None and board_train_data_thread.is_alive():
+            board_train_data_thread_b = False
+            print('diabled board_train_data_thread_b')
+
+        # Check if the thread is not already running
+        if board_defualt_run_thread is None or not board_defualt_run_thread.is_alive():
+            board_defualt_run_thread = threading.Thread(target=board_run_default, name="BoardDefaultRunThread")
+            board_defualt_run_thread_b = True
+            print('enabled board_defualt_run_thread')
+            board_defualt_run_thread.start()
         return redirect('/login')
 
+def board_run_default():
+    board = unpickle_board_obj()
+    if board:
+        board.default_message_byte_list = None
+        while board_defualt_run_thread_b:
+            board.default()
+
+def unpickle_board_obj():
+    global board_unpickle
+    if board_unpickle is None:
+        board_unpickle = load_led_board(BOARD_PICKLE_FILE)
+        board = board_unpickle
+    else:
+        board = board_unpickle
+    print("board unpickle data")
+    print(board)
+    while board.occupy:
+        time.sleep(1)
+    return board
+
+def board_run_train_data(board_data):
+    board = unpickle_board_obj()
+    board.set_data(board_data)
+    while board_train_data_thread_b:
+        board.start()
+
+# Function to unpickle the LEDBoard object
+def load_led_board(filename):
+    with open(filename, 'rb') as file:
+        board_obj = pickle.load(file)
+    return board_obj
 
 def change_password(request):
     if request.user.is_authenticated:
@@ -45,7 +145,7 @@ def user_login(request):
                 if user is not None:
                     login(request, user)
                     messages.info(request, f"You are now logged in as {username}.")
-                    return redirect("/")
+                    return redirect("/config_train_and_coach")
                 else:
                     messages.error(request,"Invalid username or password.")
             else:
@@ -55,9 +155,11 @@ def user_login(request):
 
 
 def user_logout(request):
-	logout(request)
-	messages.info(request, "You have successfully logged out.") 
-	return redirect("/login")
+    # truncating config info table on logout
+    ConfigInfo.objects.all().delete()  # Truncate the table associated with ConfigInfo
+    logout(request)
+    messages.info(request, "You have successfully logged out.") 
+    return redirect("/login")
 
 
 def trains(request):
@@ -464,3 +566,17 @@ def get_updated_info(request):
         data = get_next_station(train_id)
         return JsonResponse({'success': 'Called Successfully', 'data': data}, status=200)
     return JsonResponse({'error': 'Method not allowed'}, status=403)
+
+def config_train_and_coach(request):
+    if request.user.is_authenticated:
+        if request.method == 'POST':
+            form = ConfigInfoForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect('/')  # Redirect to success page after form submission
+        else:
+            form = ConfigInfoForm()
+        trains = Trains.objects.all()  # Get all trains for dropdown
+        return render(request, 'inderr/config_info_form.html', {'form': form, 'trains': trains})
+    else :
+        return redirect('/')

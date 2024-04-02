@@ -15,4 +15,5 @@ urlpatterns = [
     path('send_data_rsp/', send_data_rsp, name="send_data_rsp"),
     path('get_updated_info/', get_updated_info, name="get_updated_info"),
     path("train_details/<int:train_number>/", train_details, name="train_details"),
+    path("config_train_and_coach/", config_train_and_coach, name="config_train_and_coach"),
 ]

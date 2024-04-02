@@ -79,3 +79,10 @@ class UploadImage(models.Model):
   
     def __str__(self):  
         return self.caption  
+    
+class ConfigInfo(models.Model):
+    train = models.ForeignKey('Trains', on_delete=models.CASCADE)
+    coach_no = models.CharField(max_length=5)
+
+    def __str__(self):
+        return f"{self.train.name} - Coach No: {self.coach_no}"

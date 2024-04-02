@@ -1,0 +1,65 @@
+<!-- config_info_form.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin | Inderr</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon/favicon.ico' %}" />
+    <style>
+        body {
+            background-color: #fff;
+        }
+
+        .center-div {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row p-2">
+            <div class="col-md-6 center-div shadow">
+                <h2 class="text-center mb-4">Config Info Form</h2>
+                <!-- config_info_form.html -->
+
+                <form method="post">
+                    {% csrf_token %}
+                    {% comment %} {{ form.as_p }} {% endcomment %}
+                    <div class="form-group">
+                        <label for="id_train">Train:</label>
+                        <select name="train" id="id_train" class="form-control select2">
+                            {% for train in trains %}
+                                <option value="{{ train.pk }}">{{ train.number }}-{{ train.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_coach_no">Coach No:</label>
+                        {{ form.coach_no }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.select2').select2();
+        });
+    </script>
+</body>
+</html>

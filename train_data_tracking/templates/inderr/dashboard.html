@@ -3,13 +3,105 @@
 {% block content %}
 
 <div class="container-xxl flex-grow-1 container-p-y">
-    <div class="row">
+    <div class="row mb-2">
+      <div class="col-lg-12">
+        <div class="card p-4">
+          <div class="row">
+            <div class="col-lg-5 col-md-12 col-12">
+                <div class="fw-bold" style="font-size:20px">Train &nbsp;&nbsp; &nbsp;</div>
+                <span class="text-primary" style="font-size:18px">{{config.train.number}} - {{config.train.name}}</span>
+            </div>
+            <div class="col-lg-5 col-md-12 col-12">
+              <div class="fw-bold" style="font-size:20px">Coach&nbsp;&nbsp;&nbsp; </div>
+              <span class="text-primary" style="font-size:18px">{{config.coach_no}}</span>
+            </div>
+            <div class="col-12 my-1 col-sm-6 col-md-3 col-lg-1">
+              <!-- Start button -->
+              <button id="start-button" class="btn btn-outline-primary">Start</button>
+            </div>
+            <div class="col-12 my-1 col-sm-6 col-md-3 col-lg-1">
+              <!-- Stop button -->
+              <button id="stop-button" class="btn btn-outline-danger" disabled>Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb-2">
+      <div class="col-lg-6 col-md-6 col-12">
+        <div class="card p-4">
+          <div class="mb-2">
+            <span class="text-info">Running Days : </span> &nbsp;
+            {% if config.train.monday == 1 %} <span>Mon</span> {% else %} <span class="text-muted">Mon</span> {% endif %} &nbsp;
+            {% if config.train.tuesday == 1 %} <span>Tue</span> {% else %} <span class="text-muted">Tue</span> {% endif %} &nbsp;
+            {% if config.train.wednesday == 1 %} <span>Wed</span> {% else %} <span class="text-muted">Wed</span> {% endif %} &nbsp;
+            {% if config.train.thursday == 1 %} <span>Thu</span> {% else %} <span class="text-muted">Thu</span> {% endif %} &nbsp;
+            {% if config.train.friday == 1 %} <span>Fri</span> {% else %} <span class="text-muted">Fri</span> {% endif %} &nbsp;
+            {% if config.train.saturday == 1 %} <span>Sat</span> {% else %} <span class="text-muted">Sat</span> {% endif %} &nbsp;
+            {% if config.train.sunday == 1 %} <span>Sun</span> {% else %} <span class="text-muted">Sun</span> {% endif %} &nbsp;
+          </div>
+          <div class="my-1" id="next-station">
+          </div>
+          <table class="table table-bordered table-hover table-striped status-list-cntr">
+            <thead class="header-cntr">
+                <tr>
+                    <!-- <th scope="col">SN</th> -->
+                    {% comment %} <th scope="col"></th> {% endcomment %}
+                    <th scope="col">Station</th>
+                    <th scope="col">Arrives</th>
+                    <th scope="col">Departs</th>
+                </tr>
+            </thead>
+            <tbody class="running-status-rows">
+                {% for item in object_list %}
+                    <tr id="{{ item.station_id.name }}" data-station="{{ item.station_id.name }}" class="status-row " >
+                        <!-- <td scope="row">{{ forloop.counter }}</td> -->
+                        {% comment %} <td scope="row" class="timeline" valign="top">
+                            <div class="vertical-line ">
+                                <div class="stn-pointer"></div>
+                                <div class="curr-stn-pointer"></div>
+                            </div>
+                        </td> {% endcomment %}
+                        <td><span class="text-info">{{item.station_id.code}}</span> - {{ item.station_id.name }}</td>
+                        <td>{% if item.arrives %} {{ item.arrives }} {% else %} <span class="text-primary">Start</span> {% endif %}</td>
+                        <td>{% if item.departs %} {{ item.departs }} {% else %} <span class="text-danger">End</span> {% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-6 col-md-6 col-12">
+        <div class="card p-4">
+          <div class="card-title">
+            Data Response
+          </div>
+          <div id="response">
+          </div>
+        </div>
+      </div>
+    </div>
+        
+
+    {% comment %} <div class="row mb-2">
+      <div class="col-lg-12">
+        <div class="card p-4">
+          
+        </div>
+      </div>
+    </div> {% endcomment %}
+
+
+
+
+    {% comment %} <div class="row">
       <div class="col-lg-8 mb-4 order-0">
         <div class="card">
           <div class="d-flex align-items-end row">
             <div class="col-sm-7">
               <div class="card-body">
-                <h5 class="card-title text-primary">Congratulations John! 🎉</h5>
+                <h5 class="card-title text-primary">Congratulations John! 🎉 </h5>
                 <p class="mb-4">
                   You have done <span class="fw-bold">72%</span> more sales today. Check your new badge in
                   your profile.
@@ -531,9 +623,140 @@
         </div>
       </div>
       <!--/ Transactions -->
-    </div>
+    </div> {% endcomment %}
   </div>
   <!-- / Content -->
   
+
+{% endblock %}
+
+
+{% block script %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+    $(document).ready(function(){
+      var intervalId; // Variable to store the interval ID
+      // Function to start the interval
+      function startInterval() {
+          intervalId = setInterval(get_updated_info, 5000);
+          $('#start-button').prop('disabled', true); // Disable the start button
+          $('#stop-button').prop('disabled', false); // Enable the stop button
+      }
+
+       // Function to stop the interval
+      function stopInterval() {
+        clearInterval(intervalId);
+        $('#start-button').prop('disabled', false); // Enable the start button
+        $('#stop-button').prop('disabled', true); // Disable the stop button
+      }
+
+      // Event handler for the click event of the start button
+      $('#start-button').click(function() {
+        startInterval(); // Call the function to start the interval
+      });
+
+      // Event handler for the click event of the stop button
+      $('#stop-button').click(function() {
+          // Show a confirmation dialog
+          var confirmation = confirm("Are you sure you want to stop the interval?");
+          if (confirmation) {
+              stopInterval(); // Call the function to stop the interval if user confirms
+          }
+          // Otherwise, do nothing if user cancels
+      });
+
+    });
+
+    function get_updated_info(){
+        let URL = "{% url 'get_updated_info' %}";
+        fetch(URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers:{
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({'details' : {'train_id': "{{ config.train.id }}"}}) //JavaScript object of data to POST
+        })
+        .then(response => {
+                return response.json() //Convert response to JSON
+        })
+        .then(data => {
+            //Perform actions with the response data from the view
+            console.log(data.name)
+            console.log(data.data.name)
+            $('#next-station').html('<span class="text-danger fs-4" id="next-station"><span class="text-info fs-5">Next Station : </span>' + data.data.name + '</span>');
+            // forward_announcment({'next_station': "The next Station is "+data.data.name});
+            forward_announcment({'next_station': data.data});
+            
+        })
+    }
+
+
+    function forward_announcment(data){
+      /*data = {
+        "next_station": {
+            "name": "Vidisha",
+            "lat": "23.522687",
+            "lon": "77.815174",
+            "order": 2,
+            "distance": 26.775995244304408
+        }
+      } ;*/
+      displayData(data);
+        let URL = "{% url 'send_data_rsp' %}";
+        fetch(URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers:{
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({'data' : data}) //JavaScript object of data to POST
+        })
+        .then(response => {
+                return response.json() //Convert response to JSON
+        })
+        .then(data => {
+            //Perform actions with the response data from the view
+            console.log(data);
+        })
+    }
+
+    function displayData(data) {
+      // Create a div element to hold the data
+      var $container = $('<div>');
+  
+      // Create a span element for the name
+      var $name = $('<span>').addClass('text-info fs-5').text('Next Station: ' + data.next_station.name);
+  
+      // Create a span element for the latitude
+      var $lat = $('<span>').text('Latitude: ' + data.next_station.lat);
+  
+      // Create a span element for the longitude
+      var $lon = $('<span>').text('Longitude: ' + data.next_station.lon);
+  
+      // Create a span element for the order
+      var $order = $('<span>').text('Order: ' + data.next_station.order);
+  
+      // Create a span element for the distance
+      var $distance = $('<span>').text('Distance: ' + data.next_station.distance);
+  
+      // Append all the spans to the container
+      $container.append($name, $('<br>'), $lat, $('<br>'), $lon, $('<br>'), $order, $('<br>'), $distance);
+  
+      // Append the container to the div with ID 'response'
+      $('#response').empty().append($container);
+    }
+    
+  
+
+
+
+</script>
 
 {% endblock %}

@@ -36,3 +36,7 @@ class TrainInnerStationAdmin (admin.ModelAdmin):
     list_display = ('id', 'train_id', 'station_id', 'order', 'inserted_at')
 
 admin.site.register(TrainInnerStation, TrainInnerStationAdmin)
+
+@admin.register(ConfigInfo)
+class ConfigInfoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'train', 'coach_no']
