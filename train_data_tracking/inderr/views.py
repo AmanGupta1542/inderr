@@ -3,7 +3,7 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 import json
 import pickle
 import sys
@@ -12,6 +12,8 @@ import pickle
 from django.db.models import Q
 from datetime import datetime
 import time
+import logging
+logger = logging.getLogger("inderr.views")
 
 
 from .forms import UserLogin, UserImage, ConfigInfoForm
@@ -30,6 +32,16 @@ board_train_data_thread_b = True
 stop_event = threading.Event()
 board_unpickle = None
 LED_COL_OPT = [20, 25, 30, 35, 40, 45, 50]
+
+# def index1(request):
+#     a = 5
+#     b = 0
+#     try:
+#         result = a / b
+#     except ZeroDivisionError:
+#         logger.exception("Attempted to divide by zero.")
+#         return HttpResponse('Got Error')
+#     return HttpResponse(result)
 
 def index(request):
     global board_defualt_run_thread

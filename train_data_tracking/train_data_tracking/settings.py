@@ -174,3 +174,92 @@ PWA_APP_ICONS = [
 # ]
 PWA_APP_DIR = 'ltr'
 PWA_APP_LANG = 'en-US'
+
+####################   Email configuration start    ######################################
+
+# SMTP email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Backend for sending emails via SMTP
+
+# SMTP server details
+EMAIL_HOST = 'smtp.gmail.com'           # SMTP server address
+EMAIL_PORT = 587                        # SMTP port (typically 587 for TLS)
+EMAIL_USE_TLS = True                    # Whether to use TLS encryption
+EMAIL_HOST_USER = 'amangupta1542@gmail.com'  # SMTP username
+EMAIL_HOST_PASSWORD = 'ofeasqzmvrjcsxaf'  # SMTP password
+
+# Email address to send error notifications to (for 'AdminEmailHandler' handler)
+ADMINS = [
+    ('Aman Gupta', 'aman@mistpl.com'),
+]
+
+# Subject prefix for email notifications
+EMAIL_SUBJECT_PREFIX = '[PAPIS Error] '
+
+# Default sender email address (optional)
+DEFAULT_FROM_EMAIL = 'amangupta1542@gmail.com'
+
+
+####################   Email configuration end ######################################
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        # 'applogfile': {
+        #     'level':'DEBUG',
+        #     'class':'logging.handlers.RotatingFileHandler',
+        #     'filename': os.path.join(BASE_DIR, 'inderr.log'),
+        #     'maxBytes': 1024*1024*15, # 15MB
+        #     'backupCount': 10,
+        # },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'inderr.log'),  # Specify the file path
+            'formatter': 'verbose',
+        },
+        # 'mail_admins': {
+        #     'level': 'ERROR',
+        #     #  The require_debug_false filter ensures that error emails are only sent when DEBUG mode is turned off.
+        #     # 'filters': ['require_debug_false'], # Make sure the filter is correctly referenced here
+        #     'class': 'django.utils.log.AdminEmailHandler',
+        #     'include_html': True,
+        # },
+        'email': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'include_html': True,
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'inderr': {
+            'handlers': ['console', 'file'],
+            # Add email to get error log on email
+            # 'handlers': ['console', 'file', 'email'],
+            # applogfile and mail_admins, just same as 'file' and 'email', you can uncomment next line, logging method will not affected
+            # 'handlers': ['console', 'applogfile', 'mail_admins'],
+            'level': 'DEBUG',
+        },
+    },
+}
