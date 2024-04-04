@@ -77,12 +77,7 @@ def index(request):
                     'train_via': 'VIA '+ ', '.join(via_list)
                 }
             }
-            global board_unpickle
-            if board_unpickle is None:
-                board_unpickle = load_led_board(BOARD_PICKLE_FILE)
-                board = board_unpickle
-            else:
-                board = board_unpickle
+            board = unpickle_board()
             ctx['time_delay'] = board.time_delay_col
             if board_train_data_thread is None or not board_train_data_thread.is_alive():
                 board_train_data_thread = threading.Thread(target=board_run_train_data, args=(board_train_data,), name="BoardTrainDataThread")
@@ -116,13 +111,17 @@ def board_run_default():
         while board_defualt_run_thread_b:
             board.default()
 
-def unpickle_board_obj():
+def unpickle_board():
     global board_unpickle
     if board_unpickle is None:
         board_unpickle = load_led_board(BOARD_PICKLE_FILE)
         board = board_unpickle
     else:
         board = board_unpickle
+    return board
+
+def unpickle_board_obj():
+    board = unpickle_board()
     print("board unpickle data")
     print(board)
     while board.occupy:
@@ -603,12 +602,7 @@ def change_led_col_speed(request, led_col):
     if request.method == 'GET':
         # Process the data as needed
         try:
-            global board_unpickle
-            if board_unpickle is None:
-                board_unpickle = load_led_board(BOARD_PICKLE_FILE)
-                board = board_unpickle
-            else:
-                board = board_unpickle
+            board = unpickle_board()
             board.time_delay_col = led_col
             board.time_delay = 1/led_col
             # Return success response
