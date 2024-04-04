@@ -20,6 +20,7 @@ from .coords import get_coords, next_coords
 from .public_functions import *
 from .board import LEDBoard
 import serial
+from .serial_connection import TIME_DELAY
 
 BOARD_PICKLE_FILE = "board.pkl"
 board_defualt_run_thread = None
@@ -28,6 +29,7 @@ board_train_data_thread = None
 board_train_data_thread_b = True
 stop_event = threading.Event()
 board_unpickle = None
+LED_COL_OPT = [20, 25, 30, 35, 40, 45, 50]
 
 def index(request):
     global board_defualt_run_thread
@@ -38,7 +40,8 @@ def index(request):
         config_train_coach = ConfigInfo.objects.first()
         if config_train_coach:
             object_list = TrainInnerStation.objects.filter(train_id=config_train_coach.train).order_by('order')
-            ctx = {'config': config_train_coach, 'object_list': object_list}
+            
+            ctx = {'config': config_train_coach, 'object_list': object_list, 'led_col_opt': LED_COL_OPT}
             for thread in threading.enumerate():
                 print(thread)
             if board_defualt_run_thread is not None and board_defualt_run_thread.is_alive():
@@ -49,13 +52,20 @@ def index(request):
                 # # Reset the event for future use
                 # stop_event.clear()
                 board_defualt_run_thread_b = False
-            print(board_defualt_run_thread.is_alive())
-            print(board_defualt_run_thread)
+            # print(board_defualt_run_thread.is_alive())
+            # print(board_defualt_run_thread)
             for thread in threading.enumerate():
                 print(thread)
             print(config_train_coach.train)
             from_station = Stations.objects.get(pk = config_train_coach.train.from_station_id).name.upper()
             to_station = Stations.objects.get(pk = config_train_coach.train.to_station_id).name.upper()
+            inner_stations = TrainInnerStation.objects.filter(train_id=config_train_coach.train).order_by('order')
+            via_list = []
+            for stat in inner_stations:
+                if int(stat.order) == 1 or int(stat.order) == len(inner_stations):
+                    pass
+                else:
+                    via_list.append(stat.station_id.name.upper())
             board_train_data = {
                 'fix_part' : {
                     'coach_no': config_train_coach.coach_no.upper(),  # 'A-11'
@@ -64,9 +74,16 @@ def index(request):
                 'moving_part': {
                     'train_from_to': from_station+" TO "+to_station,
                     'train_name': config_train_coach.train.name.upper(),
-                    'train_via': 'VIA SAGAR, BINA'
+                    'train_via': 'VIA '+ ', '.join(via_list)
                 }
             }
+            global board_unpickle
+            if board_unpickle is None:
+                board_unpickle = load_led_board(BOARD_PICKLE_FILE)
+                board = board_unpickle
+            else:
+                board = board_unpickle
+            ctx['time_delay'] = board.time_delay_col
             if board_train_data_thread is None or not board_train_data_thread.is_alive():
                 board_train_data_thread = threading.Thread(target=board_run_train_data, args=(board_train_data,), name="BoardTrainDataThread")
                 board_train_data_thread_b = True
@@ -580,3 +597,25 @@ def config_train_and_coach(request):
         return render(request, 'inderr/config_info_form.html', {'form': form, 'trains': trains})
     else :
         return redirect('/')
+
+
+def change_led_col_speed(request, led_col):
+    if request.method == 'GET':
+        # Process the data as needed
+        try:
+            global board_unpickle
+            if board_unpickle is None:
+                board_unpickle = load_led_board(BOARD_PICKLE_FILE)
+                board = board_unpickle
+            else:
+                board = board_unpickle
+            board.time_delay_col = led_col
+            board.time_delay = 1/led_col
+            # Return success response
+            return JsonResponse({'message': 'LED color speed changed successfully'}, status=200)
+        except Exception as e:
+            # Return error response if there's an exception
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        # Return error response for unsupported methods
+        return JsonResponse({'error': 'Method not allowed'}, status=405)

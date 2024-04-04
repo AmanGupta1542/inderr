@@ -16,4 +16,5 @@ urlpatterns = [
     path('get_updated_info/', get_updated_info, name="get_updated_info"),
     path("train_details/<int:train_number>/", train_details, name="train_details"),
     path("config_train_and_coach/", config_train_and_coach, name="config_train_and_coach"),
+    path("change_led_col_speed/<int:led_col>/", change_led_col_speed, name="change_led_col_speed"),
 ]

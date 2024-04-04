@@ -1,6 +1,6 @@
 
 import time
-from .serial_connection import serial_connection
+from .serial_connection import serial_connection, TIME_DELAY
 
 CHAR_MATRICES = {
     "A" : ['00110000', '01111000', '11001100', '11001100', '11111100', '11001100', '11001100', '00000000'],
@@ -2364,7 +2364,6 @@ CHAR_MATRICES = {
 }
 
 
-TIME_DELAY = 1/25 # 25 column per second
 DEFAULT = "WELCOME TO THE INDIAN RAILWAYS"
 MOVING_LOOP_COUNT = 2
 
@@ -2375,6 +2374,8 @@ class LEDBoard:
         self.fix_coach = False
         self.ser = serial_connection
         self.occupy = False
+        self.time_delay_col = TIME_DELAY
+        self.time_delay = 1/self.time_delay_col
 
     def set_data(self, data):
         self.data = data
@@ -2551,7 +2552,7 @@ class LEDBoard:
             byte_list = []
             for i in data:
                 # ## print(i)
-                time.sleep(TIME_DELAY)
+                time.sleep(self.time_delay)
                 if(i == ' '):
                     byte_list.append(b'\x00\x00')
                     byte_list.append(b'\x00\x00')
@@ -2567,12 +2568,12 @@ class LEDBoard:
             # ## print(byte_list)
         for i in byte_list:
             self.send_data(i)
-            time.sleep(TIME_DELAY)
+            time.sleep(self.time_delay)
 
     def clear(self, no_of_times):
         for t in range(no_of_times):
             self.send_data(b'\x00\x00')
-            time.sleep(TIME_DELAY)
+            time.sleep(self.time_delay)
 
     def default(self):
         self.occupy = True
@@ -2645,7 +2646,7 @@ class LEDBoard:
         # ## print(byte_list)
         # for i in range(len(byte_data)):
         #     self.send_data(output_bytes)
-        #     time.sleep(TIME_DELAY)
+        #     time.sleep(self.time_delay)
 
         byte_value_for_end = (data_len).to_bytes(1, byteorder='big')
 
@@ -2682,7 +2683,7 @@ class LEDBoard:
         
         for i in range(len(byte_data)):
             self.send_data(byte_data[i])
-            time.sleep(TIME_DELAY)
+            time.sleep(self.time_delay)
 
     def send_col_data(self, byte_data):
         self.ser.write(byte_data)
@@ -2715,7 +2716,7 @@ class LEDBoard:
             b'\x00\x01', b'\x00\x01', b'\x00\x01', b'\x00\x01', b'\x00\x01',
         ]
         for i in range(50):
-            time.sleep(TIME_DELAY)
+            time.sleep(self.time_delay)
             self.send_data(byte_list[i])
 
     def test_16x16(self):
@@ -2733,7 +2734,7 @@ class LEDBoard:
             byte_len = len(byte_list)
             for i in range(byte_len):
                 self.send_data(byte_list[i])
-                time.sleep(TIME_DELAY)
+                time.sleep(self.time_delay)
 
     def send_fix(self):
         ''' Method to handle fix data sending to the board, if self.fix_coach is true then it sends train_no else it send coach_no
@@ -2757,7 +2758,6 @@ class LEDBoard:
         for i in range(MOVING_LOOP_COUNT):
             self.run(self.data['moving_part']['train_via'])
             self.clear(128-len(str(self.fix_data)))
-        self.send_fix()
 
     def start(self):
         self.occupy = True

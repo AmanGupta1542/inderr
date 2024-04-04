@@ -29,6 +29,27 @@
     </div>
 
     <div class="row mb-2">
+      <div class="col-lg-8 col-md-8 col-12">
+        <div class="card p-4">
+          <span class="text-dark">LED board column speed : <strong id="col-move" class="text-danger">{{time_delay}}</strong> column per second</span>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-4 col-12">
+        <div class="card p-4">
+          <form>
+            <label class="form-label" for="led-col">Change Scrolling</label> &nbsp;
+            <select id="led-col" name="led_col" class="">
+              {% for col_opt in led_col_opt %}
+                <option value="{{ col_opt }}">{{col_opt}}</option>
+              {% endfor %}
+            </select> &nbsp;
+            <span>Column per second</span>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb-2">
       <div class="col-lg-6 col-md-6 col-12">
         <div class="card p-4">
           <div class="mb-2">
@@ -637,12 +658,29 @@
 <script>
 
     $(document).ready(function(){
+      add_selected();
       var intervalId; // Variable to store the interval ID
       // Function to start the interval
       function startInterval() {
           intervalId = setInterval(get_updated_info, 5000);
           $('#start-button').prop('disabled', true); // Disable the start button
           $('#stop-button').prop('disabled', false); // Enable the stop button
+      }
+
+      function add_selected (){
+        var selectedValue = "{{time_delay}}"; // Specify the desired value
+    
+        // Find the select element by its id
+        var $select = $('#led-col');
+    
+        // Iterate over the options
+        $select.find('option').each(function() {
+            // Check if the option's value matches the desired value
+            if ($(this).val() === selectedValue) {
+                // Set the 'selected' attribute for the matching option
+                $(this).prop('selected', true);
+            }
+        });
       }
 
        // Function to stop the interval
@@ -753,8 +791,26 @@
       $('#response').empty().append($container);
     }
     
-  
-
+    var led_col_options = document.getElementById("led-col");
+    led_col_options.addEventListener("change", function() {
+      var selectedValue = this.value;
+      
+      // Call the API using Fetch
+      fetch('http://127.0.0.1:8000/change_led_col_speed/' + selectedValue)
+        .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // success case, change value
+          document.getElementById("col-move").innerHTML = selectedValue;
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    });
 
 
 </script>
