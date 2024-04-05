@@ -1,6 +1,8 @@
 
 import time
 from .serial_connection import serial_connection, TIME_DELAY
+import logging
+logger = logging.getLogger("inderr.board")
 
 CHAR_MATRICES = {
     "A" : ['00110000', '01111000', '11001100', '11001100', '11111100', '11001100', '11001100', '00000000'],

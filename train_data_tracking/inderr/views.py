@@ -245,10 +245,12 @@ def emit_rpi_data(request, data):
         return JsonResponse({'success': 'Called Successfully'}, status=200)
     except socket.gaierror as e:
         print({'error': f"An error occurred: {e}"})
+        logger.exception(f"A socket error occurred while trying to connecct with Raspberry PI: {e}")
         return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
         # return f"Socket error: {e}"
     except Exception as e:
         print({'error': f"An error occurred: {e}"})
+        logger.exception(f"An unknown error occurred while trying to connecct with Raspberry PI: {e}")
         return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
         # return f"An error occurred: {e}"
 
@@ -620,6 +622,7 @@ def change_led_col_speed(request, led_col):
             # Return success response
             return JsonResponse({'message': 'LED color speed changed successfully'}, status=200)
         except Exception as e:
+            
             # Return error response if there's an exception
             return JsonResponse({'error': str(e)}, status=400)
     else:

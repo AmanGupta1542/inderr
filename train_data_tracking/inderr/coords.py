@@ -1,24 +1,24 @@
 
 import serial
 import pynmea2
+import logging
+logger = logging.getLogger("inderr.coords")
 
 from .models import Temp
+from .serial_connection import serial_gps_conn
 
 
 # Replace 'COMx' with the actual COM port or serial device of your GPS receiver
 def get_coords():
-    data = { 'lat': 23.486672, 'lon': 77.733850 }
-    try:
-        ser = serial.Serial('COM4', 9600, timeout=5.0)
-    except Exception as e:
-        print(e)
+    data = { 'lat': 0, 'lon': 0 }
+    if serial_gps_conn is None:
         id = next_coords()
         place = Temp.objects.get(id=id)
         print("lat : ", place.lat)
         print("lon : ", place.lon)
         data = { 'lat': place.lat, 'lon': place.lon }
         return data
-    line = ser.readline().decode('utf-8')
+    line = serial_gps_conn.readline().decode('utf-8')
     if line.startswith('$GNGLL'):
         try:
             msg = pynmea2.parse(line)

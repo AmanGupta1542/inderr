@@ -3,6 +3,9 @@ from decimal import Decimal
 
 from .models import Trains, TrainInnerStation
 from .coords import get_coords
+import logging
+
+logger = logging.getLogger("inderr.public_functions")
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     # Convert Decimal values to float
