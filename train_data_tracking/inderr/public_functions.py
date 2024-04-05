@@ -25,13 +25,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     distance = R * c
     return distance
 
-# Example usage:
-# lat1, lon1 = Decimal('37.7749'), Decimal('-122.4194')
-# lat2, lon2 = Decimal('37.7749'), Decimal('-122.4193')
-
-# result_distance = haversine_distance(lat1, lon1, lat2, lon2)
-# print(f'Distance: {result_distance:.2f} kilometers')
-
 def get_next_station(train_id):
     stop_stations = TrainInnerStation.objects.filter(train_id=train_id).order_by('order')
     curr_location = get_coords()
@@ -39,7 +32,6 @@ def get_next_station(train_id):
     if curr_location['lat'] != 0 and curr_location['lon'] != 0 :
         stop_list = []
         for stations in stop_stations:
-            # print(stations.station_id.name)
             dict = {
                     'name': stations.station_id.name,
                     'lat': stations.station_id.lat,

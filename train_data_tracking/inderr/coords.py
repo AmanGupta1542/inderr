@@ -8,14 +8,11 @@ from .models import Temp
 from .serial_connection import serial_gps_conn
 
 
-# Replace 'COMx' with the actual COM port or serial device of your GPS receiver
 def get_coords():
     data = { 'lat': 0, 'lon': 0 }
     if serial_gps_conn is None:
         id = next_coords()
         place = Temp.objects.get(id=id)
-        print("lat : ", place.lat)
-        print("lon : ", place.lon)
         data = { 'lat': place.lat, 'lon': place.lon }
         return data
     line = serial_gps_conn.readline().decode('utf-8')
@@ -26,8 +23,6 @@ def get_coords():
                 'lat': msg.latitude,
                 'lon': msg.longitude
             }
-            print("Latitude: {0}, Longitude: {1}".format(msg.latitude, msg.longitude))
-            print("Raw NMEA data: {0}".format(line))
         except pynmea2.ParseError as e:
             print("Parse error: {0}".format(e))
         finally :
@@ -37,10 +32,8 @@ def get_coords():
         return data
 
 def next_coords():
-    print('getting')
     f = open("temp.txt", "r")
     data = f.read()
-    print(data)
     f.close()
     
     if data:
