@@ -178,26 +178,56 @@ def trains(request):
 def emit_rpi_data(request, data):
     import socket
     # Define the Raspberry Pi's IP address and port
-    raspberry_pi_ip = '192.168.43.15'  # aman wifi
+    # raspberry_pi_ip = '192.168.43.15'  # aman wifi
     #raspberry_pi_ip = '192.168.137.8'
-    # raspberry_pi_ip = '192.168.31.89'  # madhya airtel
+    raspberry_pi_ip = '192.168.31.89'  # madhya airtel
     raspberry_pi_port = 1026
+    ack_data = ""
     try:
-        train_stations = request.session.get('train_stations')
-        train_stations['next_station'] = data['next_station']
-        train_stations['curr_location'] = data['curr_location']
-        train_stations['speed'] = data['speed']
-        train_stations['late_by'] = data['late_by']
+        f = open("ack.txt", "r")
+        ack_data = f.read()
+        f.close()
+        if ack_data == "":
+            train_stations = request.session.get('train_stations')
+            train_stations['get_ack'] = ack_data
+            print('Ack status:',ack_data)
+            train_stations['next_station'] = data['next_station']
+            train_stations['curr_location'] = data['curr_location']
+            train_stations['speed'] = data['speed']
+            train_stations['late_by'] = data['late_by']
+        else:
+            train_stations = {}
+            train_stations['get_ack'] = ack_data
+            train_stations['next_station'] = data['next_station']
+            train_stations['curr_location'] = data['curr_location']
+            train_stations['speed'] = data['speed']
+            train_stations['late_by'] = data['late_by']
         # Create a socket object
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Connect to the Raspberry Pi
         client_socket.connect((raspberry_pi_ip, raspberry_pi_port))
-        
+        print(train_stations)
         # Serialize the dictionary object using pickle
         serialized_data = pickle.dumps(train_stations)
         # serialized_data = json.dumps(data).encode('utf-8')
         client_socket.send(serialized_data)
+
+        if ack_data == "":
+            print('Ack data status in if:',ack_data)
+            # Wait for acknowledgment
+            ack = client_socket.recv(1024)
+            if ack.decode() == "ACK":
+                print("Acknowledgment received")
+                request.session['get_ack'] = True   
+                print('setup ack to true')
+                with open("ack.txt", "w") as f:
+                    f.write('ACK')
+                print('Ack write ok:')
+            else:
+                print("Error: Acknowledgment not received properly")
+
+
         # Close the socket
         client_socket.close()
         return JsonResponse({'success': 'Called Successfully'}, status=200)
@@ -251,7 +281,9 @@ def train_details(request, train_number):
             'stations': stations,
         }
         request.session['train_stations'] = res_data
-        return render(request, 'inderr/train-details.html', context)
+        request.session['get_ack'] = False
+        print('get_ack set to false')
+        # return render(request, 'inderr/train-details.html', context)
         
         
     else :
@@ -340,12 +372,17 @@ def get_lat_lon2(request): # May include more arguments depending on URL paramet
 
 def send_data_rsp(request):
     if request.method == 'POST':
+        # this data variable contains next_staiton {'next_station': {'name': 'Saugor', 'lat': '23.847723', 'lon': '78.744192', 'order': 7, 'distance': 14.974075925058397}} 
         data = json.load(request)['data']
+        print(data)
+        print('aman')
         data['curr_location'] = get_coords()
         data['speed'] = 0
         data['late_by'] = 0
-        emit_rpi_data(request, data)
-    return JsonResponse({'error': 'Method not allowed'}, status=403)
+        return emit_rpi_data(request, data)
+    else:
+        return JsonResponse({'error': 'Method not allowed', 'request_method': request.method}, status=403)
+    
 
 def get_updated_info(request):
     if request.method == 'POST':
@@ -360,12 +397,20 @@ def config_train_and_coach(request):
         if request.method == 'POST':
             form = ConfigInfoForm(request.POST)
             if form.is_valid():
+                train = form.cleaned_data['train']
+                train_details(request, train.number)
+                with open("ack.txt", "w") as f:
+                    pass  # This will open the file and immediately close it, effectively removing its contents
                 form.save()
                 return redirect('/')  # Redirect to success page after form submission
         else:
             form = ConfigInfoForm()
         trains = Trains.objects.all()  # Get all trains for dropdown
-        return render(request, 'inderr/config_info_form.html', {'form': form, 'trains': trains})
+        already_config = ConfigInfo.objects.all()
+        if already_config:
+            return redirect('/')
+        else:
+            return render(request, 'inderr/config_info_form.html', {'form': form, 'trains': trains})
     else :
         return redirect('/')
 
