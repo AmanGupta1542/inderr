@@ -10,7 +10,7 @@ import threading
 import pickle
 from django.db.models import Q
 from datetime import datetime
-import time
+import time as tm
 import logging
 logger = logging.getLogger("inderr.views")
 
@@ -112,7 +112,7 @@ def unpickle_board():
 def unpickle_board_obj():
     board = unpickle_board()
     while board.occupy:
-        time.sleep(1)
+        tm.sleep(1)
     return board
 
 def board_run_train_data(board_data):
@@ -192,14 +192,14 @@ def emit_rpi_data(request, data):
             train_stations['get_ack'] = ack_data
             print('Ack status:',ack_data)
             train_stations['next_station'] = data['next_station']
-            train_stations['curr_location'] = data['curr_location']
+            # train_stations['curr_location'] = data['curr_location']
             train_stations['speed'] = data['speed']
             train_stations['late_by'] = data['late_by']
         else:
             train_stations = {}
             train_stations['get_ack'] = ack_data
             train_stations['next_station'] = data['next_station']
-            train_stations['curr_location'] = data['curr_location']
+            # train_stations['curr_location'] = data['curr_location']
             train_stations['speed'] = data['speed']
             train_stations['late_by'] = data['late_by']
         # Create a socket object
@@ -248,29 +248,29 @@ def train_details(request, train_number):
         object_list = TrainInnerStation.objects.filter(train_id=train).order_by('order')
         places = Temp.objects.all()
 
-        next_stations = get_next_station(train.id)
+        next_stations, gps_obj, stations = get_next_station(train.id)
         current_time = datetime.now().time()
         # Convert the current time to a datetime object with today's date
         current_datetime = datetime.combine(datetime.today(), current_time)
         late_by_min = (current_datetime - datetime.combine(datetime.today(), object_list[0].departs)).total_seconds() / 60
         late_by = 0 if late_by_min < 0 else round(late_by_min, 0)
-        context = {'train': train, 'object_list':object_list, 'places':places, 'curr_location':get_coords(), 'next_stations':next_stations }
-        stations = []
-        total_distance = 0
-        for station in object_list:
-            if station.distance: total_distance +=station.distance
-            stations.append({
-                'name': station.station_id.name,
-                'abbr': station.station_id.code,
-                'distance': station.distance,
-                'total_distance': total_distance,
-                'order': station.order,
-                'estimate_time': station.arrives.strftime('%H:%M') if station.arrives is not None else None,
-                'delay_time': station.departs.strftime('%H:%M') if station.departs is not None else None,
-                'lat': str(station.station_id.lat),
-                'lon': str(station.station_id.lon),
-                'halt_time': station.halt_time
-            })
+        # context = {'train': train, 'object_list':object_list, 'places':places, 'curr_location':get_coords(), 'next_stations':next_stations }
+        # stations = []
+        # total_distance = 0
+        # for station in object_list:
+        #     if station.distance: total_distance +=station.distance
+        #     stations.append({
+        #         'name': station.station_id.name,
+        #         'abbr': station.station_id.code,
+        #         'distance': station.distance,
+        #         'total_distance': total_distance,
+        #         'order': station.order,
+        #         'estimate_time': station.arrives.strftime('%H:%M') if station.arrives is not None else None,
+        #         'delay_time': station.departs.strftime('%H:%M') if station.departs is not None else None,
+        #         'lat': str(station.station_id.lat),
+        #         'lon': str(station.station_id.lon),
+        #         'halt_time': station.halt_time
+        #     })
         res_data = {
             'train': {
                 'name': train.name,
@@ -376,7 +376,7 @@ def send_data_rsp(request):
         data = json.load(request)['data']
         print(data)
         print('aman')
-        data['curr_location'] = get_coords()
+        # data['curr_location'] = get_coords()
         data['speed'] = 0
         data['late_by'] = 0
         return emit_rpi_data(request, data)
@@ -388,7 +388,7 @@ def get_updated_info(request):
     if request.method == 'POST':
         details = json.load(request)['details']
         train_id = details['train_id']
-        data = get_next_station(train_id)
+        data, gps_obj, stations = get_next_station(train_id)
         return JsonResponse({'success': 'Called Successfully', 'data': data}, status=200)
     return JsonResponse({'error': 'Method not allowed'}, status=403)
 

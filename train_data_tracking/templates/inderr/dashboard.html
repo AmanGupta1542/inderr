@@ -662,7 +662,7 @@
       var intervalId; // Variable to store the interval ID
       // Function to start the interval
       function startInterval() {
-          intervalId = setInterval(get_updated_info, 5000);
+          intervalId = setInterval(get_updated_info, 30000);
           $('#start-button').prop('disabled', true); // Disable the start button
           $('#stop-button').prop('disabled', false); // Enable the stop button
       }
@@ -783,9 +783,18 @@
   
       // Create a span element for the distance
       var $distance = $('<span>').text('Distance: ' + data.next_station.distance);
+      var $rem_dis = $('<span>').text('Remaining Distance: ' + data.next_station.remaining_distance);
+      var $total_dis = $('<span>').text('Total Distance: ' + data.next_station.total_distance);
+      var $late_by = $('<span>').text('Late By : ' + data.next_station.late_by);
+      var $estimate_time = $('<span>').text('Estimate time : ' + data.next_station.estimate_time);
+      var $depart_time = $('<span>').text('Depart Time : ' + data.next_station.depart_time);
+      var $halt_time = $('<span>').text('Halt time : ' + data.next_station.halt_time);
+      var $totaL_time_to_reach = $('<span>').text('Reach the station : ' + data.next_station.totaL_time_to_reach);
+      var $instant_distance = $('<span>').text('Instant Distance : ' + data.next_station.instant_distance);
+      var $instant_speed = $('<span>').text('Instant Speed : ' + data.next_station.instant_speed);
   
       // Append all the spans to the container
-      $container.append($name, $('<br>'), $lat, $('<br>'), $lon, $('<br>'), $order, $('<br>'), $distance);
+      $container.append($name, $('<br>'), $lat, $('<br>'), $lon, $('<br>'), $order, $('<br>'), $distance, $('<br>'), $rem_dis, $('<br>'), $total_dis, $('<br>'), $late_by, $('<br>'), $estimate_time, $('<br>'), $depart_time, $('<br>'), $halt_time, $('<br>'), $totaL_time_to_reach, $('<br>'), $instant_distance, $('<br>'), $instant_speed  );
   
       // Append the container to the div with ID 'response'
       $('#response').empty().append($container);
