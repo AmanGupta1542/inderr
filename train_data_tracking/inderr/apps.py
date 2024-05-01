@@ -8,7 +8,7 @@ def clear_cache():
 def set_global_variable():
     # Clear cache before setting new cache variables
     clear_cache()
-    
+    cache.set('stations', None)
     cache.set('first_gps_obj', None)
     cache.set('prev_gps_obj', None)
     cache.set('current_or_last_gps_obj', None)
