@@ -16,7 +16,7 @@ logger = logging.getLogger("inderr.views")
 
 
 from .forms import UserLogin, UserImage, ConfigInfoForm
-from .models import Trains, TrainInnerStation,Temp, ConfigInfo, Stations
+from .models import Trains, TrainInnerStation,Temp, ConfigInfo, Stations, TrackingData, LoginInfo
 from .coords import get_coords
 from .public_functions import *
 from .board import LEDBoard
@@ -36,8 +36,14 @@ def index(request):
     global board_defualt_run_thread_b
     global board_train_data_thread_b
     if request.user.is_authenticated:
-        config_train_coach = ConfigInfo.objects.first()
+        config_train_coach = ConfigInfo.objects.filter(status=0, user_id=request.user).last()
         if config_train_coach:
+            request.session['already_config'] = True
+            last_tracking_log_id = TrackingData.objects.filter(user=request.user, config=config_train_coach).last() # getting None if no data is there
+            request.session['last_tracking_log_id'] = last_tracking_log_id.id
+            
+            if request.session.get('train_stations', None) is None:
+                train_details(request, Trains.objects.get(id=config_train_coach.train_id).number)
             object_list = TrainInnerStation.objects.filter(train_id=config_train_coach.train).order_by('order')
             
             ctx = {'config': config_train_coach, 'object_list': object_list, 'led_col_opt': LED_COL_OPT}
@@ -145,6 +151,8 @@ def user_login(request):
                 user = authenticate(username=username, password=password)
                 if user is not None:
                     login(request, user)
+                    login_info = LoginInfo(user=user)
+                    login_info.save()
                     messages.info(request, f"You are now logged in as {username}.")
                     return redirect("/config_train_and_coach")
                 else:
@@ -157,7 +165,7 @@ def user_login(request):
 
 def user_logout(request):
     # truncating config info table on logout
-    ConfigInfo.objects.all().delete()  # Truncate the table associated with ConfigInfo
+    # ConfigInfo.objects.all().delete()  # Truncate the table associated with ConfigInfo
     logout(request)
     messages.info(request, "You have successfully logged out.") 
     return redirect("/login")
@@ -202,6 +210,44 @@ def emit_rpi_data(request, data):
             # train_stations['curr_location'] = data['curr_location']
             train_stations['speed'] = data['speed']
             train_stations['late_by'] = data['late_by']
+
+        already_config = request.session.get('already_config', False)
+        print('already config is ', already_config)
+        if already_config:
+            last_tracking_log_id = request.session.get('last_tracking_log_id', None)
+            print(last_tracking_log_id)
+            if last_tracking_log_id:
+                last_tracking_log = TrackingData.objects.get(id = last_tracking_log_id)
+                distance_skip = haversine_distance(data['next_station']['curr_lat'], data['next_station']['curr_lon'], last_tracking_log.curr_lat, last_tracking_log.curr_lon)
+                print('distance skip is', distance_skip)
+        
+        next_station = TrackingData(
+            name=data['next_station']['name'],
+            lat=data['next_station']['lat'],
+            lon=data['next_station']['lon'],
+            curr_lat=data['next_station']['curr_lat'],
+            curr_lon=data['next_station']['curr_lon'],
+            order=data['next_station']['order'],
+            remaining_distance=data['next_station']['remaining_distance'],
+            is_crossed=data['next_station']['is_crossed'],
+            actual_arrival_time=datetime.fromisoformat(data['next_station']['actual_arrival_time']) if data['next_station']['actual_arrival_time'] else None,  # actual_arrival_time is False, so we set it to None
+            actual_departure_time=datetime.fromisoformat(data['next_station']['actual_departure_time']) if data['next_station']['actual_departure_time'] else None,  # actual_departure_time is False, so we set it to None
+            abbr=data['next_station']['abbr'],
+            distance=data['next_station']['distance'],
+            total_distance=data['next_station']['total_distance'],
+            estimate_time=datetime.strptime(data['next_station']['estimate_time'], '%H:%M').time(),
+            depart_time=datetime.strptime(data['next_station']['depart_time'], '%H:%M').time(),
+            halt_time=data['next_station']['halt_time'],
+            total_time_to_reach=datetime.fromisoformat(data['next_station']['total_time_to_reach']) if data['next_station'].get('total_time_to_reach', None) else None,
+            instant_distance=data['next_station']['instant_distance'],
+            instant_speed=data['next_station']['instant_speed'],
+            late_by=data['next_station']['late_by'],
+            user = request.user,
+            config = ConfigInfo.objects.filter(status=0, user_id=request.user).first(),
+        )
+
+        next_station.save()
+
         # Create a socket object
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -232,12 +278,12 @@ def emit_rpi_data(request, data):
         client_socket.close()
         return JsonResponse({'success': 'Called Successfully'}, status=200)
     except socket.gaierror as e:
-        print({'error': f"An error occurred: {e}"})
+        print({'error': f"An error occurred1: {e}"})
         logger.exception(f"A socket error occurred while trying to connecct with Raspberry PI: {e}")
         return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
         # return f"Socket error: {e}"
     except Exception as e:
-        print({'error': f"An error occurred: {e}"})
+        print({'error': f"An error occurred2: {e}"})
         logger.exception(f"An unknown error occurred while trying to connecct with Raspberry PI: {e}")
         return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
         # return f"An error occurred: {e}"
@@ -401,15 +447,18 @@ def config_train_and_coach(request):
                 train_details(request, train.number)
                 with open("ack.txt", "w") as f:
                     pass  # This will open the file and immediately close it, effectively removing its contents
-                form.save()
+                config_info = form.save(commit=False)
+                config_info.user_id = request.user
+                config_info.save()
                 return redirect('/')  # Redirect to success page after form submission
         else:
             form = ConfigInfoForm()
         trains = Trains.objects.all()  # Get all trains for dropdown
-        already_config = ConfigInfo.objects.all()
+        already_config = ConfigInfo.objects.filter(status=0, user_id=request.user).last()
         if already_config:
             return redirect('/')
         else:
+            request.session['already_config'] = False
             return render(request, 'inderr/config_info_form.html', {'form': form, 'trains': trains})
     else :
         return redirect('/')

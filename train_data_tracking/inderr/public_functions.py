@@ -6,8 +6,38 @@ from .coords import get_coords
 import logging
 from datetime import datetime, timedelta, time
 from django.core.cache import cache
+import requests
+import pickle
+import os
+
+CACHE_FILE_PATH = 'restart.pkl'
 
 logger = logging.getLogger("inderr.public_functions")
+google_map_api_key = 'AIzaSyAn4eeaT18hannefB6jKR35GmY7iVdDCUs'
+
+
+def dump_data_to_file(file_path, data):
+    """Dumps data into a file using pickle. If the file does not exist, it creates the file."""
+    with open(file_path, 'wb') as file:
+        pickle.dump(data, file)
+    print(f"Data dumped into file {file_path}")
+
+def load_data_from_file(file_path):
+    """Loads data from a file using pickle. If the file does not exist, it returns an empty dictionary."""
+    if not os.path.exists(file_path):
+        print(f"File {file_path} does not exist. Returning empty dictionary.")
+        return {}
+    
+    with open(file_path, 'rb') as file:
+        data = pickle.load(file)
+    print(f"Data loaded from file {file_path}")
+    return data
+
+def update_data(file_path, new_data):
+    """Loads existing data, updates it with new data, and dumps it back into the file."""
+    data = load_data_from_file(file_path)
+    # data.update(new_data)
+    dump_data_to_file(file_path, new_data)
 
 
 '''Now, take 1 more scenario
@@ -24,7 +54,7 @@ Add the average delay time for trains stopped at outer locations to this delay.
 Add this adjusted delay to the scheduled arrival time at station 2 to get the estimated arrival time.
 Here's a Python function to estimate the arrival time at station 2 in this scenario:
 '''
-def estimateArrivalTimeAtStation2_at_outer(expectedArrivalTime, currentTime, averageDelay):
+def estimateArrivalTimeAtStation2_at_outer(expectedArrivalTime, averageDelay=10):
     # parameters
     # expectedArrivalTime = "18:10"
     # currentTime = "18:05"
@@ -32,18 +62,44 @@ def estimateArrivalTimeAtStation2_at_outer(expectedArrivalTime, currentTime, ave
 
     # Parse the expected arrival time and current time
     arrival = datetime.strptime(expectedArrivalTime, "%H:%M")
-    current = datetime.strptime(currentTime, "%H:%M")
-
+    current = datetime.strptime(datetime.now().strftime("%H:%M"), "%H:%M")
     # Calculate the delay between scheduled arrival and current time
     delay = current - arrival
-
+    print(delay)
     # Add the average delay time for trains stopped at outer locations
     adjustedDelay = delay + timedelta(minutes=averageDelay)
-
+    print(adjustedDelay)
     # Add the adjusted delay to the expected arrival time at station 2
     estimatedArrival = arrival + adjustedDelay
-
+    estimatedArrival = current + adjustedDelay
+    print(estimatedArrival)
     return estimatedArrival.strftime("%H:%M")
+
+# another approach, with remaining distance and average time
+# def estimateArrivalTimeAtStation2_at_outer(expectedArrivalTime, currentTime, averageDelay, remainingDistance, averageSpeed):
+#     # Parse the expected arrival time and current time
+#     arrival = datetime.strptime(expectedArrivalTime, "%H:%M")
+#     current = datetime.strptime(currentTime, "%H:%M")
+
+#     # Calculate the delay between scheduled arrival and current time
+#     delay = current - arrival
+
+#     # Check if the average speed is below a minimum threshold (e.g., 1 km/h)
+#     if averageSpeed < 1:
+#         # If the average speed is very low or zero, consider the train to be stationary
+#         # Adjust the estimated arrival time based on the delay and remaining distance
+#         estimatedArrival = current + delay
+#     else:
+#         # Estimate the time it would take to cover the remaining distance based on average speed
+#         travelTime = timedelta(hours=remainingDistance / averageSpeed)
+
+#         # Add the average delay time for trains stopped at outer locations
+#         adjustedDelay = delay + timedelta(minutes=averageDelay)
+
+#         # Add the adjusted delay and travel time to the current time to get estimated arrival time
+#         estimatedArrival = current + adjustedDelay + travelTime
+
+#     return estimatedArrival.strftime("%H:%M")
 
 
 '''
@@ -57,9 +113,7 @@ Calculate the delay between the scheduled departure time from station 1 and the 
 Add this delay to the expected arrival time at station 2.
 Here's a Python function to estimate the arrival time at station 2:
 '''
-from datetime import datetime, timedelta
-
-def estimateArrivalTimeAtStation2_at_station(departureTime, expectedArrivalTime, currentTime):
+def estimateArrivalTimeAtStation2_at_station(departureTime, expectedArrivalTime, currentTime=datetime.now().strftime("%H:%M")):
     # parameters
     # departureTime = "17:55"
     # expectedArrivalTime = "18:32"
@@ -144,7 +198,7 @@ def get_next_stat_time_obj(est_time_str):
 def add_late_early_time(next_station, gps_obj):
     remaining_distance = next_station['remaining_distance']
     instent_speed = gps_obj.instant_speed # in kmph
-    instent_speed = 0
+    # instent_speed = 0
     if False:
         late_by = "Train is on time"
         minutes_difference = 0 
@@ -153,17 +207,21 @@ def add_late_early_time(next_station, gps_obj):
             # logic to check whether train is on station or not
             at_station = remaining_distance < 1
             if at_station :
-                waiting_time = int(next_station['halt_time']) # value in minutes
+                print("Stopped at the station")
+                # new_0speed_arrival_time = estimateArrivalTimeAtStation2_at_station("departure_time", next_station['estimate_time'])
+                new_0speed_arrival_time = estimateArrivalTimeAtStation2_at_outer(next_station['estimate_time'])
             else:
-                waiting_time = 5 # 5 minutes
-            totaL_time_to_reach = datetime.now() + timedelta(minutes=waiting_time)
+                print("Stopped at the outer")
+                new_0speed_arrival_time = estimateArrivalTimeAtStation2_at_outer(next_station['estimate_time'])
+            totaL_time_to_reach = get_next_stat_time_obj(new_0speed_arrival_time)
+            print("############################ totaL_time_to_reach for 0 instant speed", totaL_time_to_reach)
         else:
             time = remaining_distance/instent_speed # in hours
             print('time is, ',time)
             totaL_time_to_reach = datetime.now() + timedelta(hours=time)
         print('totaL_time_to_reach', totaL_time_to_reach)
-        next_station['totaL_time_to_reach'] = totaL_time_to_reach.strftime("%m-%d-%Y %H:%M:%S")
-        next_station['totaL_time_to_reach'] = totaL_time_to_reach.isoformat()
+        next_station['total_time_to_reach'] = totaL_time_to_reach.strftime("%m-%d-%Y %H:%M:%S")
+        next_station['total_time_to_reach'] = totaL_time_to_reach.isoformat()
         next_station['instant_distance'] = gps_obj.instant_distance
         next_station['instant_speed'] = gps_obj.instant_speed
         # convert next station arrived(estimate_time ) string in python datetime obj
@@ -207,6 +265,9 @@ def next_station_checking(next_station, stations):
     if cache_stations is None:
         print(stations)
         cache.set('stations', [stations[1]])
+        update_data(CACHE_FILE_PATH, cache.get('stations'))
+        print('loading cache from file')
+        print(load_data_from_file(CACHE_FILE_PATH))
         print('return 1')
         return stations[1]
     else:
@@ -221,7 +282,19 @@ def next_station_checking(next_station, stations):
                 if next_station_register['is_crossed']:
                     print('return 7')
                     return next_station
-                next_station.update({"is_crossed": True})
+                next_station.update({"is_crossed": True}) # Can add actual arrival timestamp here
+                next_station.update({"actual_arrival_time": datetime.now().isoformat()})
+                cache_stations.pop()
+                cache_stations.append(next_station)
+                cache.set('stations', cache_stations)
+                print('return 2')
+                return next_station
+            elif next_station['remaining_distance'] >=  (next_station['distance'] - 1):
+                # update is_crossed to true and update cache stations
+                if next_station_register['actual_departure_time'] is not None:
+                    print('return 7 new ')
+                    return next_station
+                next_station.update({"actual_departure_time": datetime.now().isoformat()})
                 cache_stations.pop()
                 cache_stations.append(next_station)
                 cache.set('stations', cache_stations)
@@ -275,11 +348,42 @@ def next_station_checking(next_station, stations):
                     print('return 6')
                     return next_expected_station
 
-
+def get_state_from_lat_lon(api_key, lat, lon):
+    # Construct the request URL
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lon}&key={api_key}"
+    
+    # Send the GET request
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        
+        # Check if the response contains results
+        if data['results']:
+            # Iterate through the address components
+            for component in data['results'][0]['address_components']:
+                if 'administrative_area_level_1' in component['types']:
+                    return component['long_name']
+        else:
+            # "No results found"
+            return None
+    else:
+        # f"Error: {response.status_code}"
+        return None
+    
 def get_next_station(train_id):
     stop_stations = TrainInnerStation.objects.filter(train_id=train_id).order_by('order')
     gps_obj = get_coords()
     lat, lon = gps_obj.gps_coords
+    state = get_state_from_lat_lon(google_map_api_key, lat, lon)
+    language_code = 'hi'
+    if state:
+        # print(state)
+        # Filter the state with the name "Madhya Pradesh" using a list comprehension
+        state_objs = [state for state in cache.get('states') if state.name == state]
+        if state_objs:
+            language_code = state_objs[0].language_code
+
     print('gps coords', gps_obj.gps_coords)
     next_stations = None
     total_distance = 0
@@ -294,9 +398,14 @@ def get_next_station(train_id):
                     'name': stations.station_id.name,
                     'lat': str(stations.station_id.lat),
                     'lon': str(stations.station_id.lon),
+                    'curr_lat': str(lat),
+                    'curr_lon': str(lon),
                     'order': stations.order,
+                    'other_lang': language_code,
                     'remaining_distance': haversine_distance(lat, lon, stations.station_id.lat, stations.station_id.lon),
                     'is_crossed': False,
+                    'actual_arrival_time': False,
+                    'actual_departure_time': False,
                     'abbr': stations.station_id.code,
                     'distance': stations.distance,
                     'total_distance': total_distance,
@@ -335,8 +444,11 @@ def get_next_station(train_id):
                         'lat': str(stations.station_id.lat),
                         'lon': str(stations.station_id.lon),
                         'order': stations.order,
+                        'other_lang': language_code,
                         'remaining_distance': stations.distance,
                         'is_crossed': False,
+                        'actual_arrival_time': False,
+                        'actual_departure_time': False,
                         'abbr': stations.station_id.code,
                         'distance': stations.distance,
                         'total_distance': total_distance,

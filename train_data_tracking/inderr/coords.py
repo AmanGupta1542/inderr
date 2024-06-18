@@ -282,6 +282,8 @@ def get_coords():
         id = next_coords()
         place = Temp.objects.get(id=id)
         coords = { 'lat': place.lat, 'lon': place.lon }
+        print('id', id)
+        print(coords)
         # return_data = { 'coordinates': coords, 'instant_speed': 0, 'timestamp': datetime.now() }
         gps_obj = temp2(coords)
         # end
@@ -340,7 +342,10 @@ def next_coords():
     if data:
         f1 = open("temp.txt", "w")
         intData = int(data)
-        intData+=1
+        if intData == 81:
+            intData = intData + 8
+        else: 
+            intData+=1
         retData = intData
         f1.write(str(intData))
         f1.close()
