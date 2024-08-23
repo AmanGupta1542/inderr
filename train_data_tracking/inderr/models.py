@@ -123,9 +123,43 @@ class TrackingData(models.Model):
         return self.name or f"Station {self.id}"
     
 
+class TrackingDataHistory(models.Model):
+    name = models.CharField(max_length=255, blank=True, null=True)
+    lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    lon = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    curr_lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    curr_lon = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    order = models.IntegerField(blank=True, null=True)
+    remaining_distance = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    is_crossed = models.BooleanField(default=False)
+    actual_arrival_time = models.DateTimeField(blank=True, null=True)
+    actual_departure_time = models.DateTimeField(blank=True, null=True)
+    abbr = models.CharField(max_length=10, blank=True, null=True)
+    distance = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    total_distance = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    estimate_time = models.TimeField(blank=True, null=True)
+    depart_time = models.TimeField(blank=True, null=True)
+    halt_time = models.IntegerField(blank=True, null=True)
+    total_time_to_reach = models.DateTimeField(blank=True, null=True)
+    instant_distance = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    instant_speed = models.DecimalField(max_digits=10, decimal_places=6, blank=True, null=True)
+    late_by = models.CharField(max_length=255, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    config = models.ForeignKey(ConfigInfo, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name or f"Station {self.id}"
+    
+
 class LoginInfo(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     login_time = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.login_time}"
+    
+
+class RestartLogs(models.Model):
+    config_id = models.BigIntegerField()
+    tracking_log_id = models.BigIntegerField()

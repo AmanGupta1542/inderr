@@ -8,20 +8,10 @@ from django.core.cache import cache
 import math
 import random
 
-from .models import Temp
+from .models import Temp, TrackingData, RestartLogs
 from .serial_connection import serial_gps_conn
+from .cache_setup import get_cache_variable
 
-# Get the global variable
-def get_global_variable(var_name):
-    value = cache.get(var_name)
-    if value:
-        return value
-    else:
-        return None
-
-# Update the global variable
-def update_global_variable(var_name, value):
-    cache.set(var_name, value)
 
 class GPSPoint:
     def __init__(self, latitude, longitude, timestamp):
@@ -86,13 +76,19 @@ class GPSData2:
         total_distance = self.total_distance
         print('first_obj gps coords ', self.first_gps_obj.gps_coords)
         print('total distance ', self.total_distance)
-        self.avg_speed = round(total_distance / (total_time.total_seconds()/3600), 2)
+        print('total time ', total_time.total_seconds())
+        try:
+            self.avg_speed = round(total_distance / (total_time.total_seconds()/3600), 2)
+        except Exception as e:
+            self.avg_speed = 0
         print('avg speed ', self.avg_speed)
         print('instant speed ', self.instant_speed)
         print('time to reach', datetime.now() + timedelta(hours=total_distance / self.instant_speed))
 
 
     def get_total_distance(self):
+        print('first gps coords')
+        print(self.first_gps_obj.gps_coords)
         self.total_distance = self.haversine_distance(self.first_gps_obj.gps_coords, self.gps_coords)
 
 
@@ -225,12 +221,29 @@ class GPSData:
     def get_total_distance(self):
         self.total_distance = self.haversine_distance(self.first_gps_obj.gps_coords, self.gps_coords)
 
+def add_restart_log(tracking_data):
+    RestartLogs(config_id=tracking_data.config_id, tracking_log_id = tracking_data.id).save()
 
+def setup_first_gps_obj():
+    tracking_data = TrackingData.objects.first()
+    first_gps_obj = get_cache_variable('first_gps_obj')
+    print('tracking data obj', tracking_data)
+    print('first_gps_obj', first_gps_obj)
+    if first_gps_obj is None and tracking_data is not None:
+        # means system(MPU) is restarted
+        add_restart_log(TrackingData.objects.last())
+        gps_obj = GPSData2({ 'lat': tracking_data.curr_lat, 'lon': tracking_data.curr_lon}, None, None)
+        cache.set('first_gps_obj', gps_obj)
+        print('return first gps obj', gps_obj)
+        return gps_obj
+    else:
+        return first_gps_obj
+    
 
 def temp():
-    first_gps_obj = get_global_variable('first_gps_obj')
-    prev_gps_obj = get_global_variable('prev_gps_obj')
-    current_or_last_gps_obj = get_global_variable('current_or_last_gps_obj')
+    first_gps_obj = setup_first_gps_obj()
+    prev_gps_obj = get_cache_variable('prev_gps_obj')
+    current_or_last_gps_obj = get_cache_variable('current_or_last_gps_obj')
     gps_obj = GPSData(serial_gps_conn, first_gps_obj, prev_gps_obj)
     if gps_obj.gps_coords is None:
         # useless object
@@ -239,20 +252,20 @@ def temp():
         # useful object
         if first_gps_obj is None:
             # update first_gps_obj
-            update_global_variable('first_gps_obj', gps_obj)
-            update_global_variable('prev_gps_obj', gps_obj)
-            update_global_variable('current_or_last_gps_obj', gps_obj)
+            cache.set('first_gps_obj', gps_obj)
+            cache.set('prev_gps_obj', gps_obj)
+            cache.set('current_or_last_gps_obj', gps_obj)
         else:
             # update current_or_last_gps_obj
-            update_global_variable('current_or_last_gps_obj', gps_obj)
-            update_global_variable('prev_gps_obj', current_or_last_gps_obj)
+            cache.set('current_or_last_gps_obj', gps_obj)
+            cache.set('prev_gps_obj', current_or_last_gps_obj)
         return gps_obj
     
 # for testing purpose
 def temp2(gps_coords):
-    first_gps_obj = get_global_variable('first_gps_obj')
-    prev_gps_obj = get_global_variable('prev_gps_obj')
-    current_or_last_gps_obj = get_global_variable('current_or_last_gps_obj')
+    first_gps_obj = setup_first_gps_obj()
+    prev_gps_obj = get_cache_variable('prev_gps_obj')
+    current_or_last_gps_obj = get_cache_variable('current_or_last_gps_obj')
     gps_obj = GPSData2(gps_coords, first_gps_obj, prev_gps_obj)
     if gps_obj.gps_coords is None:
         # useless object
@@ -261,13 +274,13 @@ def temp2(gps_coords):
         # useful object
         if first_gps_obj is None:
             # update first_gps_obj
-            update_global_variable('first_gps_obj', gps_obj)
-            update_global_variable('prev_gps_obj', gps_obj)
-            update_global_variable('current_or_last_gps_obj', gps_obj)
+            cache.set('first_gps_obj', gps_obj)
+            cache.set('prev_gps_obj', gps_obj)
+            cache.set('current_or_last_gps_obj', gps_obj)
         else:
             # update current_or_last_gps_obj
-            update_global_variable('current_or_last_gps_obj', gps_obj)
-            update_global_variable('prev_gps_obj', current_or_last_gps_obj)
+            cache.set('current_or_last_gps_obj', gps_obj)
+            cache.set('prev_gps_obj', current_or_last_gps_obj)
         return gps_obj
 
 

@@ -1,7 +1,7 @@
 import math
 from decimal import Decimal
 
-from .models import Trains, TrainInnerStation
+from .models import Trains, TrainInnerStation, TrackingData
 from .coords import get_coords
 import logging
 from datetime import datetime, timedelta, time
@@ -9,8 +9,6 @@ from django.core.cache import cache
 import requests
 import pickle
 import os
-
-CACHE_FILE_PATH = 'restart.pkl'
 
 logger = logging.getLogger("inderr.public_functions")
 google_map_api_key = 'AIzaSyAn4eeaT18hannefB6jKR35GmY7iVdDCUs'
@@ -265,10 +263,6 @@ def next_station_checking(next_station, stations):
     if cache_stations is None:
         print(stations)
         cache.set('stations', [stations[1]])
-        update_data(CACHE_FILE_PATH, cache.get('stations'))
-        print('loading cache from file')
-        print(load_data_from_file(CACHE_FILE_PATH))
-        print('return 1')
         return stations[1]
     else:
         next_station_registers = list(filter(lambda x: x.get('name') == next_station['name'], cache_stations))
@@ -371,6 +365,19 @@ def get_state_from_lat_lon(api_key, lat, lon):
         # f"Error: {response.status_code}"
         return None
     
+def mark_journy_complete(next_station):
+    if next_station['is_crossed'] == True:
+        last_crossed_station = TrackingData.objects.filter(is_crossed=True).last()
+        if last_crossed_station.abbr.lower() == next_station['abbr'].lower():
+            # Journy is completed doing necessary steps
+            # 1.) Logout user
+            # 2.) set config to 1
+            # 3.) clear/flush cache
+            # 4.) move train log data to history table
+            # 5.) stop sending data to RPI
+            return True
+    return False
+    
 def get_next_station(train_id):
     stop_stations = TrainInnerStation.objects.filter(train_id=train_id).order_by('order')
     gps_obj = get_coords()
@@ -378,11 +385,13 @@ def get_next_station(train_id):
     state = get_state_from_lat_lon(google_map_api_key, lat, lon)
     language_code = 'hi'
     if state:
-        # print(state)
-        # Filter the state with the name "Madhya Pradesh" using a list comprehension
-        state_objs = [state for state in cache.get('states') if state.name == state]
-        if state_objs:
-            language_code = state_objs[0].language_code
+        try:
+            # Filter the state with the name "Madhya Pradesh" using a list comprehension
+            state_objs = [state for state in cache.get('states') if state.name == state]
+            if state_objs:
+                language_code = state_objs[0].language_code
+        except Exception as e:
+            logger.exception(f"An error occurred while trying to get States information from cache: {e}")
 
     print('gps coords', gps_obj.gps_coords)
     next_stations = None
@@ -431,7 +440,8 @@ def get_next_station(train_id):
         next_station = next_station_checking(next_stations, stop_list1)
         print("*********** Actual next station ************************")
         print(next_station)
-        return add_late_early_time(next_station, gps_obj), gps_obj, stop_list1
+        is_completed = mark_journy_complete(next_station)
+        return add_late_early_time(next_station, gps_obj), gps_obj, stop_list1, is_completed
     else:
         cache_stations = cache.get('stations')
         if cache_stations is None:
@@ -461,4 +471,5 @@ def get_next_station(train_id):
             next_station = stop_list[1]
         else:
             next_station = cache_stations[-1]
-        return add_late_early_time(next_station, gps_obj), gps_obj, stop_stations
+        is_completed = mark_journy_complete(next_station)
+        return add_late_early_time(next_station, gps_obj), gps_obj, stop_stations, is_completed

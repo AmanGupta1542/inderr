@@ -13,10 +13,13 @@ from datetime import datetime
 import time as tm
 import logging
 logger = logging.getLogger("inderr.views")
+from django.core.cache import cache
+from .cache_setup import cache_init
+from django.db import transaction
 
 
 from .forms import UserLogin, UserImage, ConfigInfoForm
-from .models import Trains, TrainInnerStation,Temp, ConfigInfo, Stations, TrackingData, LoginInfo
+from .models import Trains, TrainInnerStation,Temp, ConfigInfo, Stations, TrackingData, LoginInfo, TrackingDataHistory
 from .coords import get_coords
 from .public_functions import *
 from .board import LEDBoard
@@ -30,7 +33,20 @@ stop_event = threading.Event()
 board_unpickle = None
 LED_COL_OPT = [20, 25, 30, 35, 40, 45, 50]
 
+
+def check_already_config(request):
+    if request.user.is_authenticated:
+        config_train_coach = ConfigInfo.objects.filter(status=0, user_id=request.user).last()
+        if config_train_coach:
+            request.session['already_config'] = True
+            last_tracking_log_id = TrackingData.objects.filter(user=request.user, config=config_train_coach).last() # getting None if no data is there
+            request.session['last_tracking_log_id'] = last_tracking_log_id.id if last_tracking_log_id is not None else None
+        else:
+            request.session['already_config'] = False
+            request.session['last_tracking_log_id'] = None
+
 def index(request):
+    cache_init()
     global board_defualt_run_thread
     global board_train_data_thread
     global board_defualt_run_thread_b
@@ -40,7 +56,7 @@ def index(request):
         if config_train_coach:
             request.session['already_config'] = True
             last_tracking_log_id = TrackingData.objects.filter(user=request.user, config=config_train_coach).last() # getting None if no data is there
-            request.session['last_tracking_log_id'] = last_tracking_log_id.id
+            request.session['last_tracking_log_id'] = last_tracking_log_id.id if last_tracking_log_id is not None else None
             
             if request.session.get('train_stations', None) is None:
                 train_details(request, Trains.objects.get(id=config_train_coach.train_id).number)
@@ -140,6 +156,7 @@ def change_password(request):
         return redirect('/login')
 
 def user_login(request):
+    cache_init()
     if request.user.is_authenticated:
         return redirect('/')
     else :
@@ -288,13 +305,84 @@ def emit_rpi_data(request, data):
         return JsonResponse({'error': f"An error occurred: {e}"}, status=500)
         # return f"An error occurred: {e}"
 
+def move_data_to_history():
+    # Start an atomic transaction to ensure all operations are completed successfully
+    with transaction.atomic():
+        # Retrieve all data from the main table
+        main_data = TrackingData.objects.all()
+
+        # Create history entries for each record in the main table
+        history_entries = []
+        for entry in main_data:
+            history_entry = TrackingDataHistory(
+                name = entry.name,
+                lat = entry.lat,
+                lon = entry.lon,
+                curr_lat = entry.curr_lat,
+                curr_lon = entry.curr_lon,
+                order = entry.order,
+                remaining_distance = entry.remaining_distance,
+                is_crossed = entry.is_crossed,
+                actual_arrival_time = entry.actual_arrival_time,
+                actual_departure_time = entry.actual_departure_time,
+                abbr = entry.abbr,
+                distance = entry.distance,
+                total_distance = entry.total_distance,
+                estimate_time = entry.estimate_time,
+                depart_time = entry.depart_time,
+                halt_time = entry.halt_time,
+                total_time_to_reach = entry.total_time_to_reach,
+                instant_distance = entry.instant_distance,
+                instant_speed = entry.instant_speed,
+                late_by = entry.late_by,
+                timestamp = entry.timestamp,
+                user = entry.user,
+                config = entry.config,
+            )
+            history_entries.append(history_entry)
+
+        # Bulk create the history entries
+        TrackingDataHistory.objects.bulk_create(history_entries)
+
+        # Clear the main table
+        TrackingData.objects.all().delete()
+
+
+def do_journy_completed_steps(request, is_completed):
+    # Journy is completed doing necessary steps
+    # 1.) Logout user
+    # 2.) set config to 1
+    # 3.) clear/flush cache
+    # 4.) move train log data to history table
+    # 5.) stop sending data to RPI (logout will redirected to the login page so, no more data will send)
+    if is_completed :
+        # clear/flush cache
+        cache.clear()
+        cache.set('is_cache_setup', False)
+
+        # set config to 1
+        config_obj = ConfigInfo.objects.filter(status=0).last()
+        if config_obj:
+            config_obj.status = True
+            config_obj.save()
+
+        # move train log data to the history table
+        move_data_to_history()
+
+        # logout 
+        # logout(request)
+        # or 
+        user_logout(request)
+
+
 def train_details(request, train_number):
     if request.user.is_authenticated:
+        check_already_config(request)
         train = Trains.objects.get(number=train_number)
         object_list = TrainInnerStation.objects.filter(train_id=train).order_by('order')
         places = Temp.objects.all()
 
-        next_stations, gps_obj, stations = get_next_station(train.id)
+        next_stations, gps_obj, stations, is_journy_completed = get_next_station(train.id)
         current_time = datetime.now().time()
         # Convert the current time to a datetime object with today's date
         current_datetime = datetime.combine(datetime.today(), current_time)
@@ -431,14 +519,25 @@ def send_data_rsp(request):
     
 
 def get_updated_info(request):
-    if request.method == 'POST':
-        details = json.load(request)['details']
-        train_id = details['train_id']
-        data, gps_obj, stations = get_next_station(train_id)
-        return JsonResponse({'success': 'Called Successfully', 'data': data}, status=200)
-    return JsonResponse({'error': 'Method not allowed'}, status=403)
+    if request.user.is_authenticated:
+        cache_init()
+        check_already_config(request)
+        if request.method == 'POST':
+            details = json.load(request)['details']
+            train_id = details['train_id']
+            data, gps_obj, stations, is_journy_completed = get_next_station(train_id)
+            if is_journy_completed:
+                do_journy_completed_steps(request, is_journy_completed)
+                return JsonResponse({'error': 'Method not allowed'}, status=403)
+
+            return JsonResponse({'success': 'Called Successfully', 'data': data}, status=200)
+        return JsonResponse({'error': 'Method not allowed'}, status=403)
+    else :
+        return redirect('/')
 
 def config_train_and_coach(request):
+    cache_init()
+    check_already_config(request)
     if request.user.is_authenticated:
         if request.method == 'POST':
             form = ConfigInfoForm(request.POST)
@@ -465,6 +564,7 @@ def config_train_and_coach(request):
 
 
 def change_led_col_speed(request, led_col):
+    cache_init()
     if request.method == 'GET':
         # Process the data as needed
         try:
