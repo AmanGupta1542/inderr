@@ -260,7 +260,7 @@ def next_station_checking(next_station, stations):
     print("##################################################################")
     print(cache_stations)
     print(next_station)
-    if cache_stations is None:
+    if cache_stations is None or len(cache_stations)==0:
         print(stations)
         cache.set('stations', [stations[1]])
         return stations[1]
@@ -273,10 +273,10 @@ def next_station_checking(next_station, stations):
 
             if next_station['remaining_distance'] <= 1:
                 # update is_crossed to true and update cache stations
+                next_station.update({"is_crossed": True}) # Can add actual arrival timestamp here
                 if next_station_register['is_crossed']:
                     print('return 7')
                     return next_station
-                next_station.update({"is_crossed": True}) # Can add actual arrival timestamp here
                 next_station.update({"actual_arrival_time": datetime.now().isoformat()})
                 cache_stations.pop()
                 cache_stations.append(next_station)
@@ -336,7 +336,7 @@ def next_station_checking(next_station, stations):
                         return next_expected_station
                 if next_station['order'] != next_expected_station_order:
                     print("##################################################################")
-                    print("breakdown occur 2")
+                    print("breakdown occur 2") ## Handle if train is restarted
                     next_expected_station = list(filter(lambda x: x.get('order') == next_expected_station_order, stations))[0]
                     print(next_expected_station)
                     print('return 6')
@@ -366,17 +366,22 @@ def get_state_from_lat_lon(api_key, lat, lon):
         return None
     
 def mark_journy_complete(next_station):
-    if next_station['is_crossed'] == True:
-        last_crossed_station = TrackingData.objects.filter(is_crossed=True).last()
-        if last_crossed_station.abbr.lower() == next_station['abbr'].lower():
-            # Journy is completed doing necessary steps
-            # 1.) Logout user
-            # 2.) set config to 1
-            # 3.) clear/flush cache
-            # 4.) move train log data to history table
-            # 5.) stop sending data to RPI
-            return True
-    return False
+    try:
+        if next_station['is_crossed'] == True:
+            last_crossed_station = TrackingData.objects.filter(is_crossed=True).last()
+            if last_crossed_station.abbr.lower() == next_station['abbr'].lower():
+                print("Journey completed")
+                # Journy is completed doing necessary steps
+                # 1.) Reset ACK to empty
+                # 2.) Logout user
+                # 3.) set config to 1
+                # 4.) clear/flush cache
+                # 5.) move train log data to history table
+                # 6.) stop sending data to RPI
+                return True
+        return False
+    except Exception as e:
+        return False
     
 def get_next_station(train_id):
     stop_stations = TrainInnerStation.objects.filter(train_id=train_id).order_by('order')
@@ -444,7 +449,7 @@ def get_next_station(train_id):
         return add_late_early_time(next_station, gps_obj), gps_obj, stop_list1, is_completed
     else:
         cache_stations = cache.get('stations')
-        if cache_stations is None:
+        if cache_stations is None or len(cache_stations)==0:
             # next_station = stop_stations[1]
             stop_list = []
             for stations in stop_stations:

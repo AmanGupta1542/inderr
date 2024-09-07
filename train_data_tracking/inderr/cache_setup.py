@@ -2,7 +2,7 @@ from django.core.cache import cache
 import os
 import pickle
 
-from .models import States, TrackingData
+from .models import States, TrackingData, TrainInnerStation
 
 def cache_init():
     is_cache_setup = cache.get('is_cache_setup')
@@ -10,8 +10,24 @@ def cache_init():
         tracking_data = list(TrackingData.objects.all())
         if len(tracking_data) > 0:
             crossed_stations = [station for station in tracking_data if station.is_crossed]
+
+            if len(crossed_stations) > 0:
+
+                stop_stations = TrainInnerStation.objects.filter(train_id=crossed_stations[0].config.train).order_by('-order')
+                if len(stop_stations) > 0:
+                    stop_station = stop_stations.first()
+                    # checking : if last station is already in the crossed_stations
+                    if stop_station.station_id.name == crossed_stations[-1].name:
+                        return False
+                
+
             if tracking_data[-1].is_crossed == False:
-                crossed_stations.append(tracking_data[-1])
+                for stat in crossed_stations:
+                    if stat.name != tracking_data[-1].name:
+                        crossed_stations.append(tracking_data[-1])
+                        break
+                
+            # 
 
             # convert crossed_stations (list of TrackingData) object into list of dict
             stations_list = []

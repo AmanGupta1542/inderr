@@ -46,7 +46,8 @@ def check_already_config(request):
             request.session['last_tracking_log_id'] = None
 
 def index(request):
-    cache_init()
+    journey_completed_on_restart = cache_init()
+    do_journy_completed_steps(request, True)
     global board_defualt_run_thread
     global board_train_data_thread
     global board_defualt_run_thread_b
@@ -156,7 +157,8 @@ def change_password(request):
         return redirect('/login')
 
 def user_login(request):
-    cache_init()
+    journey_completed_on_restart = cache_init()
+    do_journy_completed_steps(request, True)
     if request.user.is_authenticated:
         return redirect('/')
     else :
@@ -199,13 +201,21 @@ def trains(request):
         return render(request, 'inderr/trains.html', context)
     else :
         return redirect('/')
+    
+def reset_display_ack():
+    try:
+        with open("ack.txt", "w") as f:
+            f.write('')
+    except Exception as e:
+        logger.exception(f"Exception on resetting acknowledgement file: {e}")
+        pass
 
 def emit_rpi_data(request, data):
     import socket
     # Define the Raspberry Pi's IP address and port
     # raspberry_pi_ip = '192.168.43.15'  # aman wifi
-    #raspberry_pi_ip = '192.168.137.8'
-    raspberry_pi_ip = '192.168.31.89'  # madhya airtel
+    raspberry_pi_ip = '192.168.137.134' # LAN IP
+    # raspberry_pi_ip = '192.168.31.89'  # madhya airtel
     raspberry_pi_port = 1026
     ack_data = ""
     try:
@@ -307,55 +317,64 @@ def emit_rpi_data(request, data):
 
 def move_data_to_history():
     # Start an atomic transaction to ensure all operations are completed successfully
-    with transaction.atomic():
-        # Retrieve all data from the main table
-        main_data = TrackingData.objects.all()
+    try:
+        with transaction.atomic():
+            # Retrieve all data from the main table
+            main_data = TrackingData.objects.all()
 
-        # Create history entries for each record in the main table
-        history_entries = []
-        for entry in main_data:
-            history_entry = TrackingDataHistory(
-                name = entry.name,
-                lat = entry.lat,
-                lon = entry.lon,
-                curr_lat = entry.curr_lat,
-                curr_lon = entry.curr_lon,
-                order = entry.order,
-                remaining_distance = entry.remaining_distance,
-                is_crossed = entry.is_crossed,
-                actual_arrival_time = entry.actual_arrival_time,
-                actual_departure_time = entry.actual_departure_time,
-                abbr = entry.abbr,
-                distance = entry.distance,
-                total_distance = entry.total_distance,
-                estimate_time = entry.estimate_time,
-                depart_time = entry.depart_time,
-                halt_time = entry.halt_time,
-                total_time_to_reach = entry.total_time_to_reach,
-                instant_distance = entry.instant_distance,
-                instant_speed = entry.instant_speed,
-                late_by = entry.late_by,
-                timestamp = entry.timestamp,
-                user = entry.user,
-                config = entry.config,
-            )
-            history_entries.append(history_entry)
+            # Create history entries for each record in the main table
+            history_entries = []
+            for entry in main_data:
+                history_entry = TrackingDataHistory(
+                    name = entry.name,
+                    lat = entry.lat,
+                    lon = entry.lon,
+                    curr_lat = entry.curr_lat,
+                    curr_lon = entry.curr_lon,
+                    order = entry.order,
+                    remaining_distance = entry.remaining_distance,
+                    is_crossed = entry.is_crossed,
+                    actual_arrival_time = entry.actual_arrival_time,
+                    actual_departure_time = entry.actual_departure_time,
+                    abbr = entry.abbr,
+                    distance = entry.distance,
+                    total_distance = entry.total_distance,
+                    estimate_time = entry.estimate_time,
+                    depart_time = entry.depart_time,
+                    halt_time = entry.halt_time,
+                    total_time_to_reach = entry.total_time_to_reach,
+                    instant_distance = entry.instant_distance,
+                    instant_speed = entry.instant_speed,
+                    late_by = entry.late_by,
+                    timestamp = entry.timestamp,
+                    user = entry.user,
+                    config = entry.config,
+                )
+                history_entries.append(history_entry)
 
-        # Bulk create the history entries
-        TrackingDataHistory.objects.bulk_create(history_entries)
+            # Bulk create the history entries
+            TrackingDataHistory.objects.bulk_create(history_entries)
 
-        # Clear the main table
-        TrackingData.objects.all().delete()
+            # Clear the main table
+            TrackingData.objects.all().delete()
+
+    except Exception as e :
+        logger.exception(f"Exception on moving tracking data to the history table: {e}")
 
 
 def do_journy_completed_steps(request, is_completed):
     # Journy is completed doing necessary steps
-    # 1.) Logout user
-    # 2.) set config to 1
-    # 3.) clear/flush cache
-    # 4.) move train log data to history table
-    # 5.) stop sending data to RPI (logout will redirected to the login page so, no more data will send)
+    # 1.) Reset ACK to empty
+    # 2.) Logout user
+    # 3.) set config to 1
+    # 4.) clear/flush cache
+    # 5.) move train log data to history table
+    # 6.) stop sending data to RPI (logout will redirected to the login page so, no more data will send)
+    print('Journey complete function call')
+    print('Journey complete status', is_completed)
     if is_completed :
+        # reset ACK file
+        reset_display_ack()
         # clear/flush cache
         cache.clear()
         cache.set('is_cache_setup', False)
@@ -520,7 +539,8 @@ def send_data_rsp(request):
 
 def get_updated_info(request):
     if request.user.is_authenticated:
-        cache_init()
+        journey_completed_on_restart = cache_init()
+        do_journy_completed_steps(request, True)
         check_already_config(request)
         if request.method == 'POST':
             details = json.load(request)['details']
@@ -536,7 +556,8 @@ def get_updated_info(request):
         return redirect('/')
 
 def config_train_and_coach(request):
-    cache_init()
+    journey_completed_on_restart = cache_init()
+    do_journy_completed_steps(request, True)
     check_already_config(request)
     if request.user.is_authenticated:
         if request.method == 'POST':
@@ -564,7 +585,8 @@ def config_train_and_coach(request):
 
 
 def change_led_col_speed(request, led_col):
-    cache_init()
+    journey_completed_on_restart = cache_init()
+    do_journy_completed_steps(request, True)
     if request.method == 'GET':
         # Process the data as needed
         try:

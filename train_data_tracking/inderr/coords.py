@@ -222,7 +222,8 @@ class GPSData:
         self.total_distance = self.haversine_distance(self.first_gps_obj.gps_coords, self.gps_coords)
 
 def add_restart_log(tracking_data):
-    RestartLogs(config_id=tracking_data.config_id, tracking_log_id = tracking_data.id).save()
+    if tracking_data is not None:
+        RestartLogs(config_id=tracking_data.config_id, tracking_log_id = tracking_data.id).save()
 
 def setup_first_gps_obj():
     tracking_data = TrackingData.objects.first()
